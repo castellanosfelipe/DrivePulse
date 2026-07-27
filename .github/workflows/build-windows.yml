@@ -94,8 +94,12 @@ jobs:
             '${{ steps.package.outputs.installer }}',
             '${{ steps.package.outputs.checksum }}'
           )
-          gh release view $env:GITHUB_REF_NAME *> $null
-          if ($LASTEXITCODE -eq 0) {
+          $PreviousErrorPreference = $ErrorActionPreference
+          $ErrorActionPreference = 'SilentlyContinue'
+          gh release view $env:GITHUB_REF_NAME 2>$null | Out-Null
+          $ReleaseExists = $LASTEXITCODE -eq 0
+          $ErrorActionPreference = $PreviousErrorPreference
+          if ($ReleaseExists) {
             gh release upload $env:GITHUB_REF_NAME @Assets --clobber
           } else {
             gh release create $env:GITHUB_REF_NAME @Assets `
