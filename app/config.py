@@ -20,6 +20,7 @@ ENTROPY_PATH = DATA_DIR / ".entropy"
 FERNET_KEY_PATH = DATA_DIR / ".dev-fernet.key"
 RECONCILE_SIGNAL_PATH = DATA_DIR / ".reconcile"
 AGENT_HEARTBEAT_PATH = DATA_DIR / "agent-status.json"
+USER_VIEWS_DIR = PROGRAM_DATA_DIR / "users"
 
 
 def ensure_runtime_directories() -> None:
@@ -27,4 +28,3 @@ def ensure_runtime_directories() -> None:
 
     for path in (PROGRAM_DATA_DIR, DATA_DIR, LOG_DIR):
         path.mkdir(parents=True, exist_ok=True)
-

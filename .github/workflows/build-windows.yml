@@ -1,0 +1,79 @@
+name: Build Windows
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build estrictamente offline
+        shell: powershell
+        run: .\build.ps1
+
+      - name: Verificar paquete
+        shell: powershell
+        run: |
+          $Required = @(
+            '.\dist\DriveMapper\agent\agent.exe',
+            '.\dist\DriveMapper\drivemap\drivemap.exe',
+            '.\dist\DriveMapper\install.ps1'
+          )
+          foreach ($Path in $Required) {
+            if (-not (Test-Path -LiteralPath $Path)) {
+              throw "Falta artefacto: $Path"
+            }
+          }
+
+      - name: Comprimir
+        id: package
+        shell: powershell
+        run: |
+          $Version = if ($env:GITHUB_REF_TYPE -eq 'tag') {
+            $env:GITHUB_REF_NAME
+          } else {
+            'manual-' + $env:GITHUB_RUN_NUMBER
+          }
+          $Archive = "DriveMapper-$Version-win64.zip"
+          Compress-Archive -Path '.\dist\DriveMapper\*' -DestinationPath $Archive
+          "archive=$Archive" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: DriveMapper-win64
+          path: ${{ steps.package.outputs.archive }}
+          if-no-files-found: error
+
+      - name: Publicar release
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $Notes = @"
+          ## Instalación
+
+          1. Copie el ZIP a la máquina Windows offline.
+          2. Extraiga todo el contenido.
+          3. Ejecute PowerShell como administrador.
+          4. Ejecute ``powershell.exe -ExecutionPolicy Bypass -File .\install.ps1``.
+          5. Configure las unidades con ``drivemap add``; la contraseña se solicita de forma oculta.
+          "@
+          gh release create $env:GITHUB_REF_NAME `
+            '${{ steps.package.outputs.archive }}' `
+            --title "DriveMapper $env:GITHUB_REF_NAME" `
+            --notes $Notes
+

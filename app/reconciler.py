@@ -85,7 +85,7 @@ class Reconciler:
             if unchanged:
                 continue
             try:
-                remote = getattr(self.mapper, "remote_for")(managed.letter)
+                remote = self.mapper.remote_for(managed.letter)
                 if remote and remote.casefold() == managed.unc.casefold():
                     self.mapper.cancel(managed.letter, force=True)
                 elif remote:
@@ -197,4 +197,3 @@ class Reconciler:
         return ReconcileResult(
             drive_id, "failed", detail, code, classification.disposition
         )
-

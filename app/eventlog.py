@@ -16,16 +16,21 @@ class EventLogPublisher:
         if not self.enabled:
             return
         try:
-            import servicemanager
+            import win32evtlog
+            import win32evtlogutil
 
+            event_type = win32evtlog.EVENTLOG_INFORMATION_TYPE
             if level == "Error":
-                servicemanager.LogErrorMsg(message)
+                event_type = win32evtlog.EVENTLOG_ERROR_TYPE
             elif level == "Warning":
-                servicemanager.LogWarningMsg(message)
-            else:
-                servicemanager.LogInfoMsg(message)
+                event_type = win32evtlog.EVENTLOG_WARNING_TYPE
+            win32evtlogutil.ReportEvent(
+                "DriveMapper",
+                1,
+                eventType=event_type,
+                strings=[message],
+            )
         except (ImportError, OSError) as error:
             self.logger.warning(
                 "No se pudo publicar en Event Log: %s", error
             )
-

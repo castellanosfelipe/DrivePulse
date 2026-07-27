@@ -19,7 +19,9 @@ from app.config import (
     FERNET_KEY_PATH,
     LOG_DIR,
     PROGRAM_DATA_DIR,
+    PROGRAM_FILES_DIR,
     RECONCILE_SIGNAL_PATH,
+    USER_VIEWS_DIR,
     ensure_runtime_directories,
 )
 from app.db import StateDatabase
@@ -34,6 +36,7 @@ from app.platform.secretstore import SecretStore, create_secret_store
 from app.platform.signals import notify
 from app.platform.volumes import find_free_letter, inspect_letter
 from app.settings_store import SettingsStore
+from app.user_views import sync_user_views
 
 EXIT_OK = 0
 EXIT_USAGE = 1
@@ -69,6 +72,16 @@ def require_admin() -> None:
 
 def save_and_notify(runtime: Runtime, settings: AppSettings) -> None:
     runtime.store.save(settings)
+    has_user_scope = any(
+        drive.scope is DriveScope.USER for drive in settings.drives
+    )
+    if has_user_scope or USER_VIEWS_DIR.exists():
+        sync_user_views(
+            settings,
+            USER_VIEWS_DIR,
+            ENTROPY_PATH,
+            PROGRAM_FILES_DIR / "agent" / "agent.exe",
+        )
     notify(RECONCILE_SIGNAL_PATH)
     try:
         start_task("DriveMapper-System")
@@ -339,6 +352,20 @@ def command_import(args: argparse.Namespace, runtime: Runtime) -> int:
     return EXIT_OK
 
 
+def command_sync_user_tasks(
+    _args: argparse.Namespace, runtime: Runtime
+) -> int:
+    require_admin()
+    views = sync_user_views(
+        runtime.store.load(),
+        USER_VIEWS_DIR,
+        ENTROPY_PATH,
+        PROGRAM_FILES_DIR / "agent" / "agent.exe",
+    )
+    print(f"Se sincronizaron {len(views)} tareas de usuario.")
+    return EXIT_OK
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="drivemap",
@@ -422,6 +449,11 @@ def build_parser() -> argparse.ArgumentParser:
     import_parser = subparsers.add_parser("import", help="Importar y solicitar secretos")
     import_parser.add_argument("file")
     import_parser.set_defaults(handler=command_import)
+    sync_users = subparsers.add_parser(
+        "sync-user-tasks",
+        help=argparse.SUPPRESS,
+    )
+    sync_users.set_defaults(handler=command_sync_user_tasks)
     return parser
 
 
@@ -442,4 +474,3 @@ def main(argv: list[str] | None = None, runtime: Runtime | None = None) -> int:
     except (OSError, ValueError) as error:
         print(f"ERROR: {error}", file=sys.stderr)
         return EXIT_CONFIG
-

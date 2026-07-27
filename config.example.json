@@ -1,0 +1,14 @@
+{
+  "app": "DriveMapper",
+  "version": "1.0.0",
+  "settings": {
+    "check_interval_s": 60,
+    "startup_grace_s": 15,
+    "connect_timeout_s": 20,
+    "backoff_initial_s": 5,
+    "backoff_max_s": 300,
+    "log_retention_days": 30,
+    "eventlog_enabled": true
+  },
+  "drives": []
+}

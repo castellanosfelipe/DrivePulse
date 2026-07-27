@@ -12,8 +12,3 @@ config.json
 *.db
 *.db-shm
 *.db-wal
-vendor/*.exe
-wheelhouse/*.whl
-!wheelhouse/.gitkeep
-!vendor/README.md
-

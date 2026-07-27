@@ -6,6 +6,7 @@ import argparse
 import importlib
 import signal
 import sys
+from pathlib import Path
 
 from app import __version__
 from app.config import (
@@ -52,7 +53,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--scope", choices=["system", "user"], default="system")
     parser.add_argument("--target-user", default="")
     parser.add_argument("--once", action="store_true")
+    parser.add_argument("--remove-managed", action="store_true")
     parser.add_argument("--self-test", action="store_true")
+    parser.add_argument("--config-path", type=Path, default=CONFIG_PATH)
+    parser.add_argument("--database-path", type=Path, default=DATABASE_PATH)
+    parser.add_argument("--entropy-path", type=Path, default=ENTROPY_PATH)
+    parser.add_argument("--log-dir", type=Path, default=LOG_DIR)
+    parser.add_argument("--signal-path", type=Path, default=RECONCILE_SIGNAL_PATH)
+    parser.add_argument("--heartbeat-path", type=Path, default=AGENT_HEARTBEAT_PATH)
     return parser
 
 
@@ -61,26 +69,47 @@ def main(argv: list[str] | None = None) -> int:
     if args.self_test:
         return self_test()
     ensure_runtime_directories()
-    logger = configure_logging(LOG_DIR, console=not getattr(sys, "frozen", False))
+    logger = configure_logging(
+        args.log_dir, console=not getattr(sys, "frozen", False)
+    )
     mutex_name = f"Global\\DriveMapper-{args.scope}-{args.target_user or 'SYSTEM'}"
     with NamedMutex(mutex_name) as mutex:
         if not mutex.acquired:
             logger.info("Ya existe un agente para este scope; no se inicia otro.")
             return 0
-        secrets = create_secret_store(ENTROPY_PATH, FERNET_KEY_PATH)
-        store = SettingsStore(CONFIG_PATH, secrets)
-        database = StateDatabase(DATABASE_PATH)
+        database = StateDatabase(args.database_path)
+        mapper = WindowsNetworkMapper()
+        if args.remove_managed:
+            for managed in database.managed_for(args.scope, args.target_user):
+                remote = mapper.remote_for(managed.letter)
+                if remote and remote.casefold() == managed.unc.casefold():
+                    mapper.cancel(managed.letter, force=True)
+                database.remove_managed(
+                    managed.drive_id, managed.scope, managed.target_user
+                )
+                database.update_status(
+                    managed.drive_id,
+                    "removed",
+                    "Mapeo desmontado durante la desinstalación.",
+                )
+            return 0
+        secrets = create_secret_store(args.entropy_path, FERNET_KEY_PATH)
+        store = SettingsStore(
+            args.config_path,
+            secrets,
+            enforce_acl=args.scope == "system",
+        )
         settings = store.load()
         publisher = EventLogPublisher(settings.settings.eventlog_enabled, logger)
         reconciler = Reconciler(
-            WindowsNetworkMapper(), secrets, database, logger, publisher
+            mapper, secrets, database, logger, publisher
         )
         watchdog = Watchdog(
             store,
             database,
             reconciler,
-            RECONCILE_SIGNAL_PATH,
-            AGENT_HEARTBEAT_PATH,
+            args.signal_path,
+            args.heartbeat_path,
             logger,
             scope=DriveScope(args.scope),
             target_user=args.target_user,
@@ -92,4 +121,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
