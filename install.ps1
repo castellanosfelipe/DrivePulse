@@ -111,17 +111,8 @@ function Stop-DriveMapperRuntime {
         Stop-ScheduledTask -ErrorAction SilentlyContinue
 
     $Prefix = $InstallRoot.TrimEnd('\') + '\'
-    Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
-        Where-Object {
-            $_.ExecutablePath -and
-            $_.ExecutablePath.StartsWith($Prefix, [StringComparison]::OrdinalIgnoreCase)
-        } |
-        ForEach-Object {
-            Invoke-CimMethod -InputObject $_ -MethodName Terminate -ErrorAction SilentlyContinue |
-                Out-Null
-        }
-
     $Deadline = (Get-Date).AddSeconds(15)
+    $StableEmptyPolls = 0
     do {
         $Remaining = @(
             Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
@@ -134,15 +125,64 @@ function Stop-DriveMapperRuntime {
                 }
         )
         if ($Remaining.Count -eq 0) {
-            return
+            $StableEmptyPolls++
+            if ($StableEmptyPolls -ge 4) {
+                return
+            }
+        } else {
+            $StableEmptyPolls = 0
+            $Remaining | ForEach-Object {
+                Invoke-CimMethod -InputObject $_ -MethodName Terminate `
+                    -ErrorAction SilentlyContinue | Out-Null
+            }
         }
-        Start-Sleep -Milliseconds 500
+        Start-Sleep -Milliseconds 250
     } while ((Get-Date) -lt $Deadline)
 
     $ProcessList = ($Remaining | ForEach-Object {
         "$($_.Name) (PID $($_.ProcessId))"
     }) -join ', '
     throw "No se pudieron detener procesos de DriveMapper: $ProcessList"
+}
+
+function Remove-DirectoryWithRetry {
+    param(
+        [Parameter(Mandatory=$true)][string]$Path,
+        [Parameter(Mandatory=$true)][string]$InstallRoot
+    )
+    if (-not (Test-Path -LiteralPath $Path)) {
+        return
+    }
+    $LastError = $null
+    for ($Attempt = 1; $Attempt -le 12; $Attempt++) {
+        try {
+            Remove-Item -LiteralPath $Path -Recurse -Force -ErrorAction Stop
+            return
+        } catch {
+            $LastError = $_
+            try {
+                Stop-DriveMapperRuntime -InstallRoot $InstallRoot
+            } catch {}
+            Start-Sleep -Milliseconds (250 * $Attempt)
+        }
+    }
+    throw "No se pudo eliminar '$Path' despues de reintentos: $LastError"
+}
+
+function Start-SystemTaskIfNeeded {
+    param([Parameter(Mandatory=$true)][string]$Name)
+    $Task = Get-ScheduledTask -TaskName $Name -ErrorAction Stop
+    if ([string]$Task.State -eq 'Running') {
+        return
+    }
+    try {
+        Start-ScheduledTask -TaskName $Name -ErrorAction Stop
+    } catch {
+        $Current = Get-ScheduledTask -TaskName $Name -ErrorAction Stop
+        if ([string]$Current.State -ne 'Running') {
+            throw
+        }
+    }
 }
 
 function New-SystemTaskXml {
@@ -333,7 +373,7 @@ try {
     if (-not $HadConfiguration) {
         $DefaultConfig = @{
             app = 'DriveMapper'
-            version = '1.0.1'
+            version = '1.0.2'
             settings = @{
                 check_interval_s = 60
                 startup_grace_s = 15
@@ -355,7 +395,7 @@ try {
     $PreflightComplete = $true
 } finally {
     if (-not $PreflightComplete -and (Test-Path -LiteralPath $StageDir)) {
-        Remove-Item -LiteralPath $StageDir -Recurse -Force
+        Remove-DirectoryWithRetry -Path $StageDir -InstallRoot $StageDir
     }
 }
 
@@ -408,7 +448,7 @@ try {
         throw "No se pudieron sincronizar las tareas de scope user: $($SyncResult.Output -join ' ')"
     }
 
-    Start-ScheduledTask -TaskName $TaskName
+    Start-SystemTaskIfNeeded -Name $TaskName
     $Deadline = (Get-Date).AddSeconds($StartupTimeoutSeconds)
     $StatusJson = $null
     $AgentHealthy = $false
@@ -446,7 +486,9 @@ try {
     $Committed = $true
     if ($HadExistingInstall -and (Test-Path -LiteralPath $BackupDir)) {
         try {
-            Remove-Item -LiteralPath $BackupDir -Recurse -Force
+            Remove-DirectoryWithRetry `
+                -Path $BackupDir `
+                -InstallRoot $BackupDir
         } catch {
             Write-Warning "No se pudo eliminar el respaldo anterior: $BackupDir"
         }
@@ -467,19 +509,33 @@ try {
         }
     }
 } catch {
+    $InstallFailure = $_
+    Stop-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+    Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false `
+        -ErrorAction SilentlyContinue
     try {
         Stop-DriveMapperRuntime -InstallRoot $InstallFull
     } catch {
         Write-Warning "No se pudieron detener todos los procesos durante rollback."
     }
-    Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false `
-        -ErrorAction SilentlyContinue
 
     if (-not $Committed -and (Test-Path -LiteralPath $InstallFull)) {
-        Remove-Item -LiteralPath $InstallFull -Recurse -Force
+        try {
+            Remove-DirectoryWithRetry `
+                -Path $InstallFull `
+                -InstallRoot $InstallFull
+        } catch {
+            Write-Warning "No se pudo retirar la instalacion fallida: $_"
+        }
     }
     if (-not $Committed -and $HadExistingInstall -and
         (Test-Path -LiteralPath $BackupDir)) {
+        if (Test-Path -LiteralPath $InstallFull) {
+            throw (
+                "Rollback incompleto; el respaldo permanece en '$BackupDir'. " +
+                "Error original: $InstallFailure"
+            )
+        }
         Move-Item -LiteralPath $BackupDir -Destination $InstallFull
     }
     if (-not $Committed -and $PreviousTaskXml) {
@@ -488,12 +544,12 @@ try {
                 -TaskName $TaskName `
                 -Xml $PreviousTaskXml `
                 -Force | Out-Null
-            Start-ScheduledTask -TaskName $TaskName
+            Start-SystemTaskIfNeeded -Name $TaskName
         } catch {}
     }
-    throw
+    throw $InstallFailure
 } finally {
     if ($StageDir -and (Test-Path -LiteralPath $StageDir)) {
-        Remove-Item -LiteralPath $StageDir -Recurse -Force
+        Remove-DirectoryWithRetry -Path $StageDir -InstallRoot $StageDir
     }
 }

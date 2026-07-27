@@ -117,7 +117,7 @@ jobs:
           }
 
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: steps.package.outcome == 'success'
         with:
           name: DrivePulse-win64
           path: |

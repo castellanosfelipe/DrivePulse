@@ -35,17 +35,8 @@ function Resolve-SafeRemovalDirectory {
 function Stop-InstalledProcesses {
     param([Parameter(Mandatory=$true)][string]$InstallRoot)
     $Prefix = $InstallRoot.TrimEnd('\') + '\'
-    Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
-        Where-Object {
-            $_.ExecutablePath -and
-            $_.ExecutablePath.StartsWith($Prefix, [StringComparison]::OrdinalIgnoreCase)
-        } |
-        ForEach-Object {
-            Invoke-CimMethod -InputObject $_ -MethodName Terminate `
-                -ErrorAction SilentlyContinue | Out-Null
-        }
-
     $Deadline = (Get-Date).AddSeconds(15)
+    $StableEmptyPolls = 0
     do {
         $Remaining = @(
             Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
@@ -57,10 +48,41 @@ function Stop-InstalledProcesses {
                     )
                 }
         )
-        if ($Remaining.Count -eq 0) { return }
-        Start-Sleep -Milliseconds 500
+        if ($Remaining.Count -eq 0) {
+            $StableEmptyPolls++
+            if ($StableEmptyPolls -ge 4) { return }
+        } else {
+            $StableEmptyPolls = 0
+            $Remaining | ForEach-Object {
+                Invoke-CimMethod -InputObject $_ -MethodName Terminate `
+                    -ErrorAction SilentlyContinue | Out-Null
+            }
+        }
+        Start-Sleep -Milliseconds 250
     } while ((Get-Date) -lt $Deadline)
     throw "No se pudieron detener todos los procesos de DriveMapper."
+}
+
+function Remove-DirectoryWithRetry {
+    param(
+        [Parameter(Mandatory=$true)][string]$Path,
+        [Parameter(Mandatory=$true)][string]$InstallRoot
+    )
+    if (-not (Test-Path -LiteralPath $Path)) { return }
+    $LastError = $null
+    for ($Attempt = 1; $Attempt -le 12; $Attempt++) {
+        try {
+            Remove-Item -LiteralPath $Path -Recurse -Force -ErrorAction Stop
+            return
+        } catch {
+            $LastError = $_
+            try {
+                Stop-InstalledProcesses -InstallRoot $InstallRoot
+            } catch {}
+            Start-Sleep -Milliseconds (250 * $Attempt)
+        }
+    }
+    throw "No se pudo eliminar '$Path' despues de reintentos: $LastError"
 }
 
 $Identity = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -147,7 +169,9 @@ if (Test-Path -LiteralPath $ResolvedInstall) {
     )) {
         Set-Location -LiteralPath ([Environment]::GetFolderPath('Windows'))
     }
-    Remove-Item -LiteralPath $ResolvedInstall -Recurse -Force
+    Remove-DirectoryWithRetry `
+        -Path $ResolvedInstall `
+        -InstallRoot $ResolvedInstall
 }
 
 if ($Purge -and (Test-Path -LiteralPath $ResolvedData)) {
