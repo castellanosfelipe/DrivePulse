@@ -13,7 +13,7 @@ repositorio. `Pendiente Windows real` requiere los tres equipos y el Synology.
 | 6 | Contraseña incorrecta intenta una vez | Dev verificado / smoke pendiente | `test_permanent_failure_persists_suppression`, códigos 86/1326/1909 |
 | 7 | Contraseña ausente de config/log/proceso | Dev verificado / Windows pendiente | tests de secretos/redacción; inspeccionar `Win32_Process` durante mapeo |
 | 8 | Config no legible por usuario estándar | Pendiente Windows real | `install.ps1` + `drivemap doctor` + intento con usuario estándar |
-| 9 | Instalación offline sin Python | Pendiente bundle y equipo limpio | `build.ps1`, self-test congelado, instalar sin red |
+| 9 | Instalación offline sin Python | Bundle dev verificado / equipo limpio pendiente | Build offline completo y self-test congelado correctos; falta instalar sin red |
 | 10 | Instalador idempotente | Inspección dev / smoke pendiente | `Register-ScheduledTask -Force`, configuración preservada |
 | 11 | Uninstall limpia tarea/proceso/PATH | Inspección dev / smoke pendiente | `uninstall.ps1`; probar con y sin `-Purge` |
 | 12 | Doctor detecta cuatro fallos | Dev parcial / smoke pendiente | Implementación de host, secreto, letra, sesiones SMB |
@@ -44,4 +44,3 @@ repositorio. `Pendiente Windows real` requiere los tres equipos y el Synology.
 2. Confirmar incidente abierto.
 3. Restaurar el NAS.
 4. Confirmar recuperación en dos ciclos y `ended_at`.
-
