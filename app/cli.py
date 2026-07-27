@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import getpass
 import json
+import os
 import sys
 import time
 from dataclasses import dataclass
@@ -14,6 +15,7 @@ from app import __version__
 from app.config import (
     AGENT_HEARTBEAT_PATH,
     CONFIG_PATH,
+    DATA_DIR,
     DATABASE_PATH,
     ENTROPY_PATH,
     FERNET_KEY_PATH,
@@ -277,6 +279,19 @@ def command_verify_acl(_args: argparse.Namespace, runtime: Runtime) -> int:
     runtime.store.save(settings)
     CONFIG_PATH.read_bytes()
     ENTROPY_PATH.read_bytes()
+    if AGENT_HEARTBEAT_PATH.exists():
+        AGENT_HEARTBEAT_PATH.read_bytes()
+    existing_log = LOG_DIR / "agent.log"
+    if existing_log.exists():
+        with existing_log.open("ab"):
+            pass
+    for directory in (DATA_DIR, LOG_DIR):
+        probe = directory / f".acl-probe-{os.getpid()}"
+        try:
+            probe.write_bytes(b"DriveMapper ACL probe")
+            probe.read_bytes()
+        finally:
+            probe.unlink(missing_ok=True)
     print("ACL protegida verificada.")
     return EXIT_OK
 

@@ -70,6 +70,14 @@ function Invoke-Icacls {
     }
 }
 
+function Invoke-TakeOwnership {
+    param([Parameter(Mandatory=$true)][string]$Path)
+    & takeown.exe /F $Path /A /R | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw "takeown termino con codigo $LASTEXITCODE para '$Path'."
+    }
+}
+
 function Set-BinaryAcl {
     param([Parameter(Mandatory=$true)][string]$Path)
     Invoke-Icacls @(
@@ -97,6 +105,15 @@ function Set-BinaryAcl {
 
 function Set-DataAcl {
     param([Parameter(Mandatory=$true)][string]$Path)
+    Invoke-TakeOwnership -Path $Path
+    Invoke-Icacls @(
+        $Path,
+        '/grant:r',
+        '*S-1-5-18:F',
+        '*S-1-5-32-544:F',
+        '/T',
+        '/C'
+    )
     Invoke-Icacls @(
         $Path,
         '/inheritance:r'
@@ -115,6 +132,7 @@ function Set-DataAcl {
         '*S-1-5-32-544:(OI)(CI)F'
     )
     if (Get-ChildItem -LiteralPath $Path -Force -ErrorAction SilentlyContinue) {
+        Invoke-Icacls @((Join-Path $Path '*'), '/inheritance:e', '/T', '/C')
         Invoke-Icacls @((Join-Path $Path '*'), '/reset', '/T', '/C')
     }
 }
@@ -387,7 +405,7 @@ try {
     if (-not $HadConfiguration) {
         $DefaultConfig = @{
             app = 'DriveMapper'
-            version = '1.0.4'
+            version = '1.0.5'
             settings = @{
                 check_interval_s = 60
                 startup_grace_s = 15

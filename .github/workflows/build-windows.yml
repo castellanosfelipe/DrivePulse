@@ -51,6 +51,23 @@ jobs:
               throw "La instalacion limpia fallo con codigo $LASTEXITCODE."
             }
 
+            Stop-ScheduledTask -TaskName 'DriveMapper-System' `
+              -ErrorAction SilentlyContinue
+            Start-Sleep -Seconds 2
+            $LegacyBrokenAclFiles = @(
+              'C:\ProgramData\DriveMapper\data\.entropy',
+              'C:\ProgramData\DriveMapper\data\agent-status.json',
+              'C:\ProgramData\DriveMapper\logs\agent.log'
+            )
+            foreach ($Path in $LegacyBrokenAclFiles) {
+              if (Test-Path -LiteralPath $Path) {
+                & icacls.exe $Path '/inheritance:r' | Out-Null
+                if ($LASTEXITCODE -ne 0) {
+                  throw "No se pudo preparar la ACL heredada de prueba: $Path"
+                }
+              }
+            }
+
             & powershell.exe -NoProfile -ExecutionPolicy Bypass `
               -File $Installer -NonInteractive -StartupTimeoutSeconds 90
             if ($LASTEXITCODE -ne 0) {
