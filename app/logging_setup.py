@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterable
 from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 from threading import RLock
-from typing import Iterable
 
 
 class SecretRegistry:

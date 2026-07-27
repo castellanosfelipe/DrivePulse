@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import json
 import html
+import json
 import subprocess
-from pathlib import Path
 from dataclasses import dataclass
+from pathlib import Path
 
 
 @dataclass(frozen=True, slots=True)
@@ -99,7 +99,7 @@ def register_user_task(
     escaped_working = html.escape(str(agent_path.parent))
     escaped_sid = html.escape(sid)
     xml = f"""<?xml version="1.0" encoding="UTF-16"?>
-<Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+<Task version="1.3" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo><Author>DriveMapper</Author><Description>Mapeos SMB del usuario {escaped_sid}.</Description></RegistrationInfo>
   <Triggers><LogonTrigger><Enabled>true</Enabled><UserId>{escaped_sid}</UserId></LogonTrigger></Triggers>
   <Principals><Principal id="Author"><UserId>{escaped_sid}</UserId><LogonType>InteractiveToken</LogonType><RunLevel>LeastPrivilege</RunLevel></Principal></Principals>
@@ -127,4 +127,3 @@ def register_user_task(
             f"{(completed.stderr or completed.stdout).strip()}"
         )
     return task_name
-

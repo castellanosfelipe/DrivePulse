@@ -30,7 +30,6 @@ from app.errors import ConfigurationError, ConnectivityError, PrivilegeError
 from app.mapper import WindowsNetworkMapper
 from app.models import AppSettings, DriveScope, DriveSpec
 from app.platform.detect import is_admin
-from app.platform.network import unc_host
 from app.platform.scheduled_task import start_task
 from app.platform.secretstore import SecretStore, create_secret_store
 from app.platform.signals import notify
@@ -121,7 +120,7 @@ def command_list(args: argparse.Namespace, runtime: Runtime) -> int:
     for row in rows:
         print(
             f"{row['id']:<18} {row['letter']:<5} {row['scope']:<7} "
-            f"{str(row['enabled']):<10} {row['state']:<12} {row['unc']}"
+            f"{row['enabled']!s:<10} {row['state']:<12} {row['unc']}"
         )
     return EXIT_OK
 
@@ -205,6 +204,10 @@ def command_set(args: argparse.Namespace, runtime: Runtime) -> int:
     require_admin()
     settings = runtime.store.load()
     target = find_drive(settings, args.id)
+    if args.letter and inspect_letter(args.letter).is_physical:
+        raise ConfigurationError(
+            f"{args.letter} está ocupada por un volumen físico."
+        )
     changes = {
         key: value
         for key, value in {

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import replace
 
 from app.db import StateDatabase
 from app.eventlog import EventLogPublisher

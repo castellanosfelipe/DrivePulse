@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Self
 
 
 @dataclass
@@ -36,10 +37,9 @@ class NamedMutex:
             self.handle = None
             self.acquired = False
 
-    def __enter__(self) -> "NamedMutex":
+    def __enter__(self) -> Self:
         self.acquire()
         return self
 
     def __exit__(self, *_args: object) -> None:
         self.release()
-

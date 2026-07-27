@@ -104,7 +104,7 @@ class Reconciler:
                     "removed",
                     "Mapeo eliminado por convergencia declarativa.",
                 )
-            except BaseException as error:
+            except Exception as error:  # noqa: BLE001 - one drive cannot stop the loop
                 self._record_failure(managed.drive_id, error)
 
     def _reconcile_drive(
@@ -174,7 +174,7 @@ class Reconciler:
             return ReconcileResult(
                 drive.id, "connected", "Unidad mapeada y acceso verificado."
             )
-        except BaseException as error:
+        except Exception as error:  # noqa: BLE001 - convert provider errors to state
             return self._record_failure(drive.id, error)
 
     def _record_failure(

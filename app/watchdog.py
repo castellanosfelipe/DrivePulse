@@ -66,7 +66,7 @@ class Watchdog:
         while not self.stop_event.is_set():
             try:
                 settings = self.store.load()
-            except BaseException as error:
+            except Exception as error:  # noqa: BLE001 - preserve current mappings
                 self.logger.error(
                     "Configuración inválida; se conservan los mapeos existentes: %s",
                     error,
@@ -158,4 +158,3 @@ class Watchdog:
             encoding="utf-8",
         )
         os.replace(temporary, self.heartbeat_path)
-

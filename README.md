@@ -5,7 +5,7 @@
   <!-- TODO: agregar un banner propio de DrivePulse; el repositorio aún no incluye este asset. -->
 
   <p>
-    <a href="https://github.com/castellanosfelipe/DrivePulse/releases/tag/v1.0.0"><img src="https://img.shields.io/badge/version-1.0.0-blue" alt="Versión 1.0.0"/></a>
+    <a href="https://github.com/castellanosfelipe/DrivePulse/releases/tag/v1.0.1"><img src="https://img.shields.io/badge/version-1.0.1-blue" alt="Versión 1.0.1"/></a>
     <img src="https://img.shields.io/badge/status-active-2ea44f" alt="Estado activo"/>
     <img src="https://img.shields.io/badge/license-internal_use-orange" alt="Licencia de uso interno"/>
     <a href="https://github.com/castellanosfelipe/DrivePulse/actions/workflows/build-windows.yml"><img src="https://github.com/castellanosfelipe/DrivePulse/actions/workflows/build-windows.yml/badge.svg" alt="Estado del build de Windows"/></a>
@@ -38,7 +38,7 @@
 
 DrivePulse es un producto de continuidad operativa para equipos Windows que dependen de unidades SMB. Convierte un procedimiento manual y repetitivo —reconectar letras después de cada reinicio o interrupción— en una capacidad automática, observable y preparada para operar sin internet.
 
-La versión `1.0.0` está activa y cuenta con build offline y pruebas automatizadas verificadas. La aceptación final de tiempos de recuperación continúa pendiente en los tres equipos Windows y el NAS Synology reales.
+La versión `1.0.1` incorpora instalación transaccional de un comando, validación de heartbeat y compatibilidad verificada del XML con Windows Task Scheduler. La aceptación final de tiempos de recuperación continúa pendiente en los tres equipos Windows y el NAS Synology reales.
 
 ### El problema que resuelve
 
@@ -115,17 +115,24 @@ DrivePulse es deliberadamente un producto CLI-first y no incluye dashboard web e
 
 ### Pasos
 
-1. Desde un equipo con internet, descargue el paquete completo desde [DrivePulse v1.0.0](https://github.com/castellanosfelipe/DrivePulse/releases/tag/v1.0.0).
-2. Verifique el archivo `.sha256`.
-3. Copie el ZIP a la máquina Windows offline y extraiga todo su contenido.
-4. Abra PowerShell como administrador en la carpeta extraída.
-5. Ejecute:
+1. Desde un equipo con internet, descargue los tres assets de la [última release de DrivePulse](https://github.com/castellanosfelipe/DrivePulse/releases/latest): ZIP, instalador `.ps1` y `.sha256`.
+2. Copie los tres archivos a la misma carpeta de la máquina Windows offline.
+3. Abra PowerShell como administrador en esa carpeta.
+4. Ejecute un solo comando, sustituyendo `<versión>` por el nombre descargado:
 
 ```powershell
-powershell.exe -ExecutionPolicy Bypass -File .\install.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\DrivePulse-<versión>-install.ps1
 ```
 
-✅ Si todo está correcto, verá: `DriveMapper instalado correctamente.`
+El instalador verifica el SHA-256, extrae el paquete temporalmente, actualiza
+sin sobrescribir procesos activos y valida el heartbeat. Si todo está correcto,
+verá: `DriveMapper instalado correctamente.`
+
+Si ya extrajo el ZIP, el comando equivalente es:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
+```
 
 Para construir el paquete desde el repositorio:
 
@@ -234,8 +241,8 @@ Las decisiones y alternativas descartadas están documentadas en [`docs/DECISION
 - [x] Watchdog con backoff y suspensión ante fallos de credenciales.
 - [x] Protección DPAPI, redacción de logs y ACL restrictivas.
 - [x] CLI de administración y diagnóstico `doctor`.
-- [x] Build e instalación offline con 50 pruebas automatizadas.
-- [x] Release `v1.0.0` con ZIP, instalador y checksum.
+- [x] Build e instalación offline con pruebas automatizadas.
+- [x] Release `v1.0.1` con ZIP, instalador y checksum.
 
 ### 🔄 En progreso
 

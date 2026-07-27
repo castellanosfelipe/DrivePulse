@@ -14,6 +14,8 @@ def text(name: str) -> str:
 def test_install_registers_system_principal_and_both_triggers() -> None:
     script = text("install.ps1")
     assert "S-1-5-18" in script
+    assert '<Task version="1.3"' in script
+    assert "<LogonType>ServiceAccount</LogonType>" not in script
     assert "<BootTrigger>" in script
     assert "EventID=10000" in script
     assert "NetworkProfile/Operational" in script
@@ -31,9 +33,29 @@ def test_install_is_elevated_idempotent_and_hardens_acl() -> None:
     assert "/inheritance:r" in script
     assert "/remove:g" in script
     assert "*S-1-5-32-544" in script
+    assert "*S-1-5-32-545:(OI)(CI)RX" in script
     assert "New-EventLog" in script
     assert "'Machine'" in script
     assert "sync-user-tasks" in script
+
+
+def test_install_stages_update_stops_runtime_and_requires_heartbeat() -> None:
+    script = text("install.ps1")
+    assert ".DriveMapper.staging." in script
+    assert "Stop-DriveMapperRuntime" in script
+    assert "Move-Item -LiteralPath $StageDir -Destination $InstallFull" in script
+    assert "--self-test" in script
+    assert "agent_running" in script
+    assert "El agente no publico un heartbeat sano" in script
+
+
+def test_release_setup_verifies_checksum_and_runs_bundle_installer() -> None:
+    script = text("setup.ps1")
+    assert "Get-FileHash" in script
+    assert "SHA256" in script
+    assert "Expand-Archive" in script
+    assert "install.ps1" in script
+    assert "powershell.exe" in script
 
 
 def test_build_never_uses_online_pip() -> None:

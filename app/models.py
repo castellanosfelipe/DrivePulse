@@ -17,7 +17,7 @@ from pydantic import (
 )
 
 APP_NAME = "DriveMapper"
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.0.1"
 ID_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 UNC_PATTERN = re.compile(
     r'^\\\\(?P<host>[^\\/:*?"<>|]+)\\(?P<share>[^\\/:*?"<>|]+)$'
@@ -52,7 +52,7 @@ class WatchdogSettings(BaseModel):
     eventlog_enabled: bool = True
 
     @model_validator(mode="after")
-    def validate_backoff_bounds(self) -> "WatchdogSettings":
+    def validate_backoff_bounds(self) -> WatchdogSettings:
         if self.backoff_max_s < self.backoff_initial_s:
             raise ValueError(
                 "backoff_max_s debe ser mayor o igual que backoff_initial_s"
@@ -135,7 +135,7 @@ class DriveSpec(BaseModel):
         return str(path)
 
     @model_validator(mode="after")
-    def validate_scope_identity(self) -> "DriveSpec":
+    def validate_scope_identity(self) -> DriveSpec:
         if self.scope is DriveScope.USER and not self.target_user:
             raise ValueError("target_user es obligatorio cuando scope es user")
         if self.scope is DriveScope.SYSTEM and self.target_user is not None:
@@ -158,7 +158,7 @@ class AppSettings(BaseModel):
     drives: list[DriveSpec] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def validate_unique_drives(self) -> "AppSettings":
+    def validate_unique_drives(self) -> AppSettings:
         seen_ids: set[str] = set()
         seen_letters: set[tuple[DriveScope, str | None, str]] = set()
         for drive in self.drives:
@@ -179,4 +179,3 @@ class AppSettings(BaseModel):
                 )
             seen_letters.add(identity)
         return self
-

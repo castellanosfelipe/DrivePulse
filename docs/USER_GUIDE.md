@@ -51,23 +51,33 @@ Para regenerar el instalador de Python de contingencia, descargue
 
 ## Instalación
 
-Copie el paquete por USB o red interna. Desde PowerShell como administrador:
+Para instalar directamente desde los assets de una release, coloque el ZIP, el
+archivo `.sha256` y `DrivePulse-<versión>-install.ps1` en la misma carpeta.
+Desde PowerShell como administrador ejecute un solo comando:
 
 ```powershell
-Set-Location C:\Ruta\DriveMapper
-powershell.exe -ExecutionPolicy Bypass -File .\install.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\DrivePulse-<versión>-install.ps1
+```
+
+El bootstrap valida el SHA-256 antes de extraer y ejecutar el instalador
+incluido. Si el ZIP ya está extraído, use:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
 El instalador:
 
 1. verifica elevación y x64;
-2. copia binarios a `C:\Program Files\DriveMapper`;
-3. conserva datos en `C:\ProgramData\DriveMapper`;
-4. aplica ACL solo para SYSTEM y Administrators;
-5. registra `DriveMapper-System` con trigger de arranque y evento de red 10000;
-6. registra el origen `DriveMapper` de Event Log;
-7. agrega el directorio del CLI al PATH de máquina;
-8. inicia el watchdog y espera hasta 60 segundos por su heartbeat.
+2. valida el bundle y sus ejecutables antes de modificar la instalación vigente;
+3. prepara los binarios en *staging* y detiene tareas/procesos anteriores;
+4. intercambia versiones con rollback automático si falla un paso;
+5. conserva los datos en `C:\ProgramData\DriveMapper`;
+6. permite lectura/ejecución de binarios a usuarios, pero mantiene configuración,
+   secretos e historial solo para SYSTEM y Administrators;
+7. registra `DriveMapper-System` con arranque y evento de red 10000;
+8. registra el origen `DriveMapper` de Event Log y actualiza el PATH;
+9. inicia el watchdog y exige un heartbeat sano antes de informar éxito.
 
 Es idempotente. Puede ejecutarse nuevamente para actualizar binarios o reparar
 tareas y ACL sin borrar la configuración.
@@ -171,4 +181,3 @@ Eliminar también configuración, blobs DPAPI, logs e historial:
 ```
 
 `-Purge` es irreversible.
-

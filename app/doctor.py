@@ -190,7 +190,7 @@ def run_doctor(
                     "",
                 )
             )
-        except BaseException as error:
+        except Exception as error:  # noqa: BLE001 - doctor must report any provider failure
             findings.append(
                 Finding(
                     f"Secreto {drive.id}",
@@ -209,4 +209,3 @@ def run_doctor(
         )
     )
     return findings
-

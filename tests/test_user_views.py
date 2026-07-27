@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from app.models import AppSettings, DriveSpec
 from app.user_views import sync_user_views
@@ -74,3 +75,13 @@ def test_removed_user_scope_leaves_empty_view_for_unmount(tmp_path, monkeypatch)
     )
     assert payload["drives"] == []
 
+
+def test_user_agent_uses_argument_scoped_runtime_directories() -> None:
+    source = (Path(__file__).resolve().parents[1] / "agent.py").read_text(
+        encoding="utf-8"
+    )
+    assert 'if args.scope == "system":' in source
+    assert "args.database_path.parent" in source
+    assert 'fernet_key_path = args.database_path.parent / ".dev-fernet.key"' in source
+    assert 'mutex_namespace = "Global" if args.scope == "system" else "Local"' in source
+    assert "hashlib.sha256(identity.encode" in source

@@ -98,3 +98,25 @@ def test_modify_command_requires_elevation(tmp_path, monkeypatch) -> None:
         active,
     )
     assert result == 4
+
+
+def test_set_rejects_a_physical_drive_letter(tmp_path, monkeypatch) -> None:
+    active = runtime(tmp_path)
+    settings = active.store.load()
+    settings.drives.append(
+        DriveSpec(
+            id="seguridad",
+            letter="Z:",
+            unc=r"\\192.168.230.245\seguridad",
+            username=r"workgroup\readuser",
+            secret=active.secrets.protect("marker-password"),
+        )
+    )
+    active.store.save(settings)
+    monkeypatch.setattr("app.cli.is_admin", lambda: True)
+    monkeypatch.setattr(
+        "app.cli.inspect_letter",
+        lambda _letter: type("Use", (), {"is_physical": True})(),
+    )
+    assert main(["set", "seguridad", "--letter", "D:"], active) == 2
+    assert active.store.load().drives[0].letter == "Z:"
