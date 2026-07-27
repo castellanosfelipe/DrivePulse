@@ -1,0 +1,11 @@
+#!/bin/sh
+set -eu
+
+message_file="$1"
+if grep -Eiq \
+  '^(Co-Authored-By|Generated-By|AI-Generated|Assistant):|Claude|ChatGPT|Codex' \
+  "$message_file"; then
+  echo "Commit rechazado: no se permiten trailers o referencias a asistentes." >&2
+  exit 1
+fi
+

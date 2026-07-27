@@ -1,0 +1,4 @@
+pydantic==2.10.6
+pywin32==308
+cryptography==44.0.1
+
