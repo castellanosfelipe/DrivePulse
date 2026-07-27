@@ -8,30 +8,35 @@ from pathlib import Path
 from app.platform.detect import is_windows
 
 
+def _run_icacls(command: list[str], label: Path) -> None:
+    completed = subprocess.run(command, capture_output=True, text=True, check=False)
+    if completed.returncode != 0:
+        detail = (completed.stderr or completed.stdout).strip()
+        raise OSError(f"No se pudo aplicar la ACL de {label}: {detail}")
+
+
 def harden_global_path(path: Path) -> None:
     """Grant only SYSTEM and built-in Administrators full inherited control."""
 
     if not is_windows():
         return
-    command = [
-        "icacls",
-        str(path),
-        "/inheritance:r",
-        "/remove:g",
-        "*S-1-5-32-545",
-        "*S-1-1-0",
-        "*S-1-5-11",
-        "/grant:r",
-        "*S-1-5-18:(OI)(CI)F",
-        "*S-1-5-32-544:(OI)(CI)F",
-        "/T",
-        "/C",
+    commands = [
+        [
+            "icacls", str(path), "/grant:r",
+            "*S-1-5-18:F", "*S-1-5-32-544:F", "/T", "/C",
+        ],
+        ["icacls", str(path), "/inheritance:r"],
+        [
+            "icacls", str(path), "/remove:g",
+            "*S-1-5-32-545", "*S-1-1-0", "*S-1-5-11", "/T", "/C",
+        ],
+        [
+            "icacls", str(path), "/grant:r",
+            "*S-1-5-18:(OI)(CI)F", "*S-1-5-32-544:(OI)(CI)F",
+        ],
     ]
-    completed = subprocess.run(command, capture_output=True, text=True, check=False)
-    if completed.returncode != 0:
-        raise OSError(
-            f"No se pudo endurecer la ACL de {path}: {completed.stderr.strip()}"
-        )
+    for command in commands:
+        _run_icacls(command, path)
 
 
 def inspect_acl(path: Path) -> tuple[bool, str]:
@@ -74,34 +79,50 @@ def harden_user_view(root: Path, sid: str, entropy_path: Path) -> None:
 
     if not is_windows():
         return
+    broad_sids = ["*S-1-5-32-545", "*S-1-1-0", "*S-1-5-11"]
     commands = [
+        ["icacls", str(root), "/inheritance:r"],
+        ["icacls", str(root), "/remove:g", *broad_sids],
         [
-            "icacls", str(root), "/inheritance:r", "/grant:r",
-            "*S-1-5-18:(OI)(CI)F", "*S-1-5-32-544:(OI)(CI)F",
-            f"*{sid}:(RX)", "/C",
+            "icacls", str(root), "/grant:r",
+            "*S-1-5-18:F", "*S-1-5-32-544:F", f"*{sid}:RX",
         ],
         [
-            "icacls", str(root / "config.json"), "/inheritance:r", "/grant:r",
-            "*S-1-5-18:F", "*S-1-5-32-544:F", f"*{sid}:R", "/C",
+            "icacls", str(root / "config.json"), "/inheritance:r",
+            "/remove:g", *broad_sids,
         ],
         [
-            "icacls", str(root / "data"), "/inheritance:r", "/grant:r",
-            "*S-1-5-18:(OI)(CI)F", "*S-1-5-32-544:(OI)(CI)F",
-            f"*{sid}:(OI)(CI)M", "/T", "/C",
+            "icacls", str(root / "config.json"), "/grant:r",
+            "*S-1-5-18:F", "*S-1-5-32-544:F", f"*{sid}:R",
         ],
-        [
-            "icacls", str(root / "logs"), "/inheritance:r", "/grant:r",
-            "*S-1-5-18:(OI)(CI)F", "*S-1-5-32-544:(OI)(CI)F",
-            f"*{sid}:(OI)(CI)M", "/T", "/C",
-        ],
-        ["icacls", str(entropy_path), "/grant", f"*{sid}:R", "/C"],
     ]
-    for command in commands:
-        completed = subprocess.run(
-            command, capture_output=True, text=True, check=False
+    for mutable in (root / "data", root / "logs"):
+        commands.extend(
+            [
+                [
+                    "icacls", str(mutable), "/grant:r",
+                    "*S-1-5-18:F", "*S-1-5-32-544:F", f"*{sid}:M",
+                    "/T", "/C",
+                ],
+                ["icacls", str(mutable), "/inheritance:r"],
+                ["icacls", str(mutable), "/remove:g", *broad_sids, "/T", "/C"],
+                [
+                    "icacls", str(mutable), "/grant:r",
+                    "*S-1-5-18:(OI)(CI)F",
+                    "*S-1-5-32-544:(OI)(CI)F",
+                    f"*{sid}:(OI)(CI)M",
+                ],
+            ]
         )
-        if completed.returncode != 0:
-            raise OSError(
-                "No se pudo aplicar la ACL de usuario: "
-                f"{completed.stderr.strip()}"
-            )
+    commands.extend(
+        [
+            ["icacls", str(entropy_path), "/inheritance:r"],
+            ["icacls", str(entropy_path), "/remove:g", *broad_sids],
+            [
+                "icacls", str(entropy_path), "/grant:r",
+                "*S-1-5-18:F", "*S-1-5-32-544:F", f"*{sid}:R",
+            ],
+        ]
+    )
+    for command in commands:
+        _run_icacls(command, root)

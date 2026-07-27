@@ -387,7 +387,7 @@ try {
     if (-not $HadConfiguration) {
         $DefaultConfig = @{
             app = 'DriveMapper'
-            version = '1.0.3'
+            version = '1.0.4'
             settings = @{
                 check_interval_s = 60
                 startup_grace_s = 15
@@ -442,6 +442,14 @@ try {
     $AgentExe = Join-Path $InstallFull 'agent\agent.exe'
     $CliDir = Join-Path $InstallFull 'drivemap'
     $CliExe = Join-Path $CliDir 'drivemap.exe'
+    $AclResult = Invoke-InstalledCli `
+        -CliPath $CliExe `
+        -RuntimeInstallDir $InstallFull `
+        -RuntimeDataDir $DataFull `
+        -Arguments @('verify-acl')
+    if ($AclResult.ExitCode -ne 0) {
+        throw "La ACL protegida no supero la prueba de escritura y lectura."
+    }
     $TaskXml = New-SystemTaskXml `
         -AgentPath $AgentExe `
         -WorkingDirectory (Split-Path $AgentExe) `

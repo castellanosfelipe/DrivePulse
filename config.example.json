@@ -1,6 +1,6 @@
 {
   "app": "DriveMapper",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "settings": {
     "check_interval_s": 60,
     "startup_grace_s": 15,

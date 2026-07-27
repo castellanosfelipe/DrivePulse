@@ -269,6 +269,18 @@ def command_apply(_args: argparse.Namespace, _runtime: Runtime) -> int:
     return EXIT_OK
 
 
+def command_verify_acl(_args: argparse.Namespace, runtime: Runtime) -> int:
+    """Exercise a protected save and immediate reread during installation."""
+
+    require_admin()
+    settings = runtime.store.load()
+    runtime.store.save(settings)
+    CONFIG_PATH.read_bytes()
+    ENTROPY_PATH.read_bytes()
+    print("ACL protegida verificada.")
+    return EXIT_OK
+
+
 def command_status(args: argparse.Namespace, runtime: Runtime) -> int:
     heartbeat: dict[str, object] = {}
     if AGENT_HEARTBEAT_PATH.exists():
@@ -457,6 +469,11 @@ def build_parser() -> argparse.ArgumentParser:
         help=argparse.SUPPRESS,
     )
     sync_users.set_defaults(handler=command_sync_user_tasks)
+    verify_acl = subparsers.add_parser(
+        "verify-acl",
+        help=argparse.SUPPRESS,
+    )
+    verify_acl.set_defaults(handler=command_verify_acl)
     return parser
 
 

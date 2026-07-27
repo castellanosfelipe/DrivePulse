@@ -5,7 +5,7 @@
   <!-- TODO: agregar un banner propio de DrivePulse; el repositorio aún no incluye este asset. -->
 
   <p>
-    <a href="https://github.com/castellanosfelipe/DrivePulse/releases/tag/v1.0.3"><img src="https://img.shields.io/badge/version-1.0.3-blue" alt="Versión 1.0.3"/></a>
+    <a href="https://github.com/castellanosfelipe/DrivePulse/releases/tag/v1.0.4"><img src="https://img.shields.io/badge/version-1.0.4-blue" alt="Versión 1.0.4"/></a>
     <img src="https://img.shields.io/badge/status-active-2ea44f" alt="Estado activo"/>
     <img src="https://img.shields.io/badge/license-internal_use-orange" alt="Licencia de uso interno"/>
     <a href="https://github.com/castellanosfelipe/DrivePulse/actions/workflows/build-windows.yml"><img src="https://github.com/castellanosfelipe/DrivePulse/actions/workflows/build-windows.yml/badge.svg" alt="Estado del build de Windows"/></a>
@@ -38,7 +38,7 @@
 
 DrivePulse es un producto de continuidad operativa para equipos Windows que dependen de unidades SMB. Convierte un procedimiento manual y repetitivo —reconectar letras después de cada reinicio o interrupción— en una capacidad automática, observable y preparada para operar sin internet.
 
-La versión `1.0.3` incorpora instalación transaccional de un comando, validación de heartbeat y compatibilidad verificada del XML con Windows Task Scheduler. La aceptación final de tiempos de recuperación continúa pendiente en los tres equipos Windows y el NAS Synology reales.
+La versión `1.0.4` incorpora instalación transaccional, validación efectiva de ACL protegidas, comprobación de heartbeat y compatibilidad verificada del XML con Windows Task Scheduler. La aceptación final de tiempos de recuperación continúa pendiente en los tres equipos Windows y el NAS Synology reales.
 
 ### El problema que resuelve
 
@@ -242,7 +242,7 @@ Las decisiones y alternativas descartadas están documentadas en [`docs/DECISION
 - [x] Protección DPAPI, redacción de logs y ACL restrictivas.
 - [x] CLI de administración y diagnóstico `doctor`.
 - [x] Build e instalación offline con pruebas automatizadas.
-- [x] Release `v1.0.3` con ZIP, instalador y checksum.
+- [x] Release `v1.0.4` con ZIP, instalador y checksum.
 
 ### 🔄 En progreso
 

@@ -48,6 +48,7 @@ def test_install_stages_update_stops_runtime_and_requires_heartbeat() -> None:
     assert "$StableEmptyPolls" in script
     assert "Remove-DirectoryWithRetry" in script
     assert "throw $InstallFailure" in script
+    assert "verify-acl" in script
     assert "Move-Item -LiteralPath $StageDir -Destination $InstallFull" in script
     assert "--self-test" in script
     assert "agent_running" in script
