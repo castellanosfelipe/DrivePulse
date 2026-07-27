@@ -32,6 +32,7 @@ def test_install_is_elevated_idempotent_and_hardens_acl() -> None:
     assert "-Force" in script
     assert "/inheritance:r" in script
     assert "/remove:g" in script
+    assert "'/reset', '/T', '/C'" in script
     assert "*S-1-5-32-544" in script
     assert "*S-1-5-32-545:(OI)(CI)RX" in script
     assert "New-EventLog" in script

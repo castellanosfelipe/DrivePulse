@@ -74,35 +74,49 @@ function Set-BinaryAcl {
     param([Parameter(Mandatory=$true)][string]$Path)
     Invoke-Icacls @(
         $Path,
-        '/inheritance:r',
+        '/inheritance:r'
+    )
+    Invoke-Icacls @(
+        $Path,
         '/remove:g',
         '*S-1-1-0',
         '*S-1-5-11',
-        '*S-1-5-32-545',
+        '*S-1-5-32-545'
+    )
+    Invoke-Icacls @(
+        $Path,
         '/grant:r',
         '*S-1-5-18:(OI)(CI)F',
         '*S-1-5-32-544:(OI)(CI)F',
-        '*S-1-5-32-545:(OI)(CI)RX',
-        '/T',
-        '/C'
+        '*S-1-5-32-545:(OI)(CI)RX'
     )
+    if (Get-ChildItem -LiteralPath $Path -Force -ErrorAction SilentlyContinue) {
+        Invoke-Icacls @((Join-Path $Path '*'), '/reset', '/T', '/C')
+    }
 }
 
 function Set-DataAcl {
     param([Parameter(Mandatory=$true)][string]$Path)
     Invoke-Icacls @(
         $Path,
-        '/inheritance:r',
+        '/inheritance:r'
+    )
+    Invoke-Icacls @(
+        $Path,
         '/remove:g',
         '*S-1-1-0',
         '*S-1-5-11',
-        '*S-1-5-32-545',
+        '*S-1-5-32-545'
+    )
+    Invoke-Icacls @(
+        $Path,
         '/grant:r',
         '*S-1-5-18:(OI)(CI)F',
-        '*S-1-5-32-544:(OI)(CI)F',
-        '/T',
-        '/C'
+        '*S-1-5-32-544:(OI)(CI)F'
     )
+    if (Get-ChildItem -LiteralPath $Path -Force -ErrorAction SilentlyContinue) {
+        Invoke-Icacls @((Join-Path $Path '*'), '/reset', '/T', '/C')
+    }
 }
 
 function Stop-DriveMapperRuntime {
@@ -373,7 +387,7 @@ try {
     if (-not $HadConfiguration) {
         $DefaultConfig = @{
             app = 'DriveMapper'
-            version = '1.0.2'
+            version = '1.0.3'
             settings = @{
                 check_interval_s = 60
                 startup_grace_s = 15
