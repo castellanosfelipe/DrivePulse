@@ -1,5 +1,8 @@
 # DriveMapper
 
+[![GitHub](https://img.shields.io/badge/GitHub-DrivePulse-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/castellanosfelipe/DrivePulse)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Bairon_Felipe-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/bairon-felipe-peña-castellanos-ab18411b5?utm_source=share_via&utm_content=profile&utm_medium=member_ios)
+
 DriveMapper mantiene unidades SMB disponibles después del arranque y las repara
 si Windows o el NAS pierden la sesión. Está pensado para ABBYY en tres equipos
 Windows 10 Pro 22H2 sin internet y reemplaza el procedimiento con PsExec y
@@ -53,4 +56,3 @@ en `net use` debe tratarse como exposición.
 Consulte [docs/USER_GUIDE.md](docs/USER_GUIDE.md) para operación completa y
 [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md) para las pruebas pendientes en los
 equipos reales.
-
