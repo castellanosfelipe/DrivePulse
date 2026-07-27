@@ -91,6 +91,26 @@ def test_repairs_wrong_or_inaccessible_mapping(tmp_path) -> None:
     assert mapper.cancelled == ["W:"]
 
 
+def test_repairs_remembered_disconnected_mapping_1201(tmp_path) -> None:
+    reconciler, mapper, _ = make_reconciler(tmp_path)
+    original_connect = mapper.connect
+    attempts = 0
+
+    def connect_with_remembered_profile(drive_spec, password) -> None:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise OSError(1201, "remembered connection")
+        original_connect(drive_spec, password)
+
+    mapper.connect = connect_with_remembered_profile
+    result = reconciler.reconcile(AppSettings(drives=[drive()]), DriveScope.SYSTEM)
+
+    assert result[0].state == "connected"
+    assert attempts == 2
+    assert mapper.cancelled == ["W:"]
+
+
 def test_removes_deleted_mapping_owned_by_agent(tmp_path) -> None:
     reconciler, mapper, database = make_reconciler(tmp_path)
     configured = AppSettings(drives=[drive()])
@@ -119,4 +139,3 @@ def test_disabled_mapping_is_removed(tmp_path) -> None:
     )
     assert "W:" not in mapper.remotes
     assert database.managed_for("system") == []
-

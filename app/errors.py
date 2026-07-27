@@ -60,6 +60,11 @@ _ERRORS = {
         "Actualice la contraseña con 'drivemap set <id> --password'.",
         True,
     ),
+    1201: ErrorClassification(
+        1201, "ERROR_CONNECTION_UNAVAIL", ErrorDisposition.REMAP,
+        "La letra conserva una conexion persistente recordada pero desconectada.",
+        "El agente eliminara el perfil recordado y recreara el mapeo.",
+    ),
     1219: ErrorClassification(
         1219, "ERROR_SESSION_CREDENTIAL_CONFLICT", ErrorDisposition.HOST_CONFLICT,
         "Ya existe una conexión al servidor con credenciales distintas.",
@@ -120,4 +125,3 @@ class ConnectivityError(DriveMapperError):
 
 class PrivilegeError(DriveMapperError):
     """Indicate that an administrative operation lacks elevation."""
-

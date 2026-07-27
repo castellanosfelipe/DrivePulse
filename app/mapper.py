@@ -75,7 +75,11 @@ class WindowsNetworkMapper:
         import win32wnet
 
         try:
-            win32wnet.WNetCancelConnection2(name, 0, force)
+            win32wnet.WNetCancelConnection2(
+                name,
+                CONNECT_UPDATE_PROFILE,
+                force,
+            )
         except pywintypes.error as error:
             if getattr(error, "winerror", error.args[0]) != ERROR_NOT_CONNECTED:
                 raise

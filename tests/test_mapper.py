@@ -37,3 +37,9 @@ def test_user_persistence_sets_profile_flag() -> None:
         mapper.connect(drive(True), "marker-password")
     assert add.call_args.args[-1] == CONNECT_UPDATE_PROFILE
 
+
+def test_cancel_removes_remembered_profile() -> None:
+    mapper = WindowsNetworkMapper()
+    with patch("win32wnet.WNetCancelConnection2") as cancel:
+        mapper.cancel("F:", force=True)
+    assert cancel.call_args.args == ("F:", CONNECT_UPDATE_PROFILE, True)

@@ -24,9 +24,9 @@ def test_credential_failures_are_critical(code: int) -> None:
 
 def test_special_remediation_codes() -> None:
     assert classify_winerror(85).disposition is ErrorDisposition.REMAP
+    assert classify_winerror(1201).disposition is ErrorDisposition.REMAP
     assert classify_winerror(1219).disposition is ErrorDisposition.HOST_CONFLICT
 
 
 def test_unknown_code_is_not_retried_automatically() -> None:
     assert classify_winerror(9999).disposition is ErrorDisposition.UNKNOWN
-
