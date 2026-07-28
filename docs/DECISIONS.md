@@ -12,14 +12,18 @@ Se descartaron un servicio con `win32serviceutil` por su ciclo de vida más
 complejo, NSSM por introducir una dependencia y PsExec por ser innecesario y
 problemático para EDR.
 
-## D-002 — WNetAddConnection2, no net use
+## D-002 — API SMB NetUse, sin ejecutar net.exe
 
-El agente usa `WNetAddConnection2`/`WNetCancelConnection2`. La contraseña pasa
-en memoria y los errores llegan como `winerror`.
+El agente usa `NetUseAdd`/`NetUseDel` de `Netapi32` mediante pywin32. Es la API
+específica del cliente SMB `LanmanWorkstation` que respalda el flujo exitoso de
+`net use`, pero la contraseña pasa únicamente en memoria y los errores llegan
+como `winerror`.
 
-Se descartaron `net use` por exponer el secreto en la línea de comandos,
-`New-PSDrive` por su sesión de PowerShell, `mklink` porque no autentica SMB y
-`HKLM\...\DOS Devices` porque solo define nombres DOS.
+Se descartaron el proceso `net.exe` por exponer el secreto en la línea de
+comandos, `WNetAddConnection2` porque devolvió `ERROR_INVALID_FUNCTION` en los
+contextos interactivo y `SYSTEM` objetivo, `New-PSDrive` por su sesión de
+PowerShell, `mklink` porque no autentica SMB y `HKLM\...\DOS Devices` porque
+solo define nombres DOS.
 
 ## D-003 — Trigger de arranque y evento de red
 
@@ -95,12 +99,13 @@ logging se consideró insuficiente.
 
 SYSTEM usa `persistent=false` por defecto. La garantía proviene de cuatro capas:
 tarea de arranque, evento de red, watchdog y recuperación del Scheduler.
-`CONNECT_UPDATE_PROFILE` puede dejar letras fantasma y no retransmite por sí
-solo la credencial workgroup.
+La persistencia de perfil puede dejar letras fantasma y no retransmite por sí
+sola la credencial workgroup.
 
-Para `scope:user`, el perfil puede habilitarse por compatibilidad con Explorer,
-pero el agente continúa siendo la autoridad. `CONNECT_CMD_SAVECRED` se descartó
-por duplicar el almacén de secretos y ampliar acceso desde SYSTEM.
+Tanto para `scope:user` como para `scope:system`, el agente continúa siendo la
+autoridad y recrea las conexiones después del inicio de sesión o arranque.
+Guardar credenciales adicionales en el perfil se descartó por duplicar el
+almacén de secretos y ampliar acceso desde SYSTEM.
 
 ## Panel web
 

@@ -1,4 +1,4 @@
-"""Wrap WNet APIs and bounded access checks behind a mockable mapping boundary."""
+"""Wrap the native SMB redirector and bounded access checks behind one boundary."""
 
 from __future__ import annotations
 
@@ -9,11 +9,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
-from app.models import DriveScope, DriveSpec
+from app.models import DriveSpec
 
-CONNECT_UPDATE_PROFILE = 0x00000001
 ERROR_CONNECTION_UNAVAIL = 1201
 ERROR_NOT_CONNECTED = 2250
+USE_DISKDEV = 0
+USE_LOTS_OF_FORCE = 2
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,14 +38,21 @@ class Mapper(Protocol):
 
 
 class WindowsNetworkMapper:
-    """Map SMB resources in the current Windows logon session using WNet."""
+    """Map SMB resources through the LanmanWorkstation ``NetUse`` API.
+
+    ``NetUseAdd`` is the native SMB-specific API behind the successful
+    ``net use`` workflow. Unlike spawning ``net.exe``, the password remains
+    in this process' memory and never appears in a command line.
+    """
 
     def remote_for(self, letter: str) -> str | None:
         import pywintypes
-        import win32wnet
+        import win32net
 
         try:
-            return str(win32wnet.WNetGetConnection(letter))
+            use = win32net.NetUseGetInfo(None, letter, 2)
+            remote = use.get("remote")
+            return str(remote) if remote else None
         except pywintypes.error as error:
             if getattr(error, "winerror", error.args[0]) in {
                 ERROR_CONNECTION_UNAVAIL,
@@ -62,36 +70,30 @@ class WindowsNetworkMapper:
         return MappingObservation(drive.letter, remote, accessible, detail)
 
     def connect(self, drive: DriveSpec, password: str) -> None:
-        import win32netcon
-        import win32wnet
+        import win32net
 
-        resource = {
-            "Type": win32netcon.RESOURCETYPE_DISK,
-            "LocalName": drive.letter,
-            "RemoteName": drive.unc,
-            "Provider": None,
+        domain, username = _split_account(drive.username)
+        use_info = {
+            "local": drive.letter,
+            "remote": drive.unc,
+            "password": password,
+            "status": 0,
+            "asg_type": USE_DISKDEV,
+            "refcount": 0,
+            "usecount": 0,
+            "username": username,
+            "domainname": domain,
         }
-        # A LocalSystem scheduled task has no interactive user profile in which
-        # WNet can safely remember a drive. CONNECT_UPDATE_PROFILE returns
-        # ERROR_INVALID_FUNCTION on affected Windows 10 machines. The SYSTEM
-        # watchdog provides persistence by recreating the mapping every boot.
-        flags = (
-            CONNECT_UPDATE_PROFILE
-            if drive.persistent and drive.scope is DriveScope.USER
-            else 0
-        )
-        win32wnet.WNetAddConnection2(resource, password, drive.username, flags)
+        # Persistence comes from the user/SYSTEM watchdogs, which recreate the
+        # mapping in their respective logon sessions after every boot/logon.
+        win32net.NetUseAdd(None, 2, use_info)
 
     def cancel(self, name: str, *, force: bool = True) -> None:
         import pywintypes
-        import win32wnet
+        import win32net
 
         try:
-            win32wnet.WNetCancelConnection2(
-                name,
-                CONNECT_UPDATE_PROFILE,
-                force,
-            )
+            win32net.NetUseDel(None, name, USE_LOTS_OF_FORCE if force else 0)
         except pywintypes.error as error:
             if getattr(error, "winerror", error.args[0]) not in {
                 ERROR_CONNECTION_UNAVAIL,
@@ -100,30 +102,26 @@ class WindowsNetworkMapper:
                 raise
 
     def cancel_host(self, host: str) -> int:
-        import win32netcon
-        import win32wnet
+        import win32net
 
-        handle = win32wnet.WNetOpenEnum(
-            win32netcon.RESOURCE_CONNECTED,
-            win32netcon.RESOURCETYPE_DISK,
-            0,
-            None,
-        )
         cancelled = 0
-        try:
-            while True:
-                resources = win32wnet.WNetEnumResource(handle, 0)
-                if not resources:
-                    break
-                for resource in resources:
-                    remote = resource.get("RemoteName") or ""
-                    remote_host = remote.lstrip("\\").split("\\", 1)[0]
-                    if remote_host.casefold() == host.casefold():
-                        self.cancel(resource.get("LocalName") or remote, force=True)
-                        cancelled += 1
-        finally:
-            win32wnet.WNetCloseEnum(handle)
+        uses, _total, _resume = win32net.NetUseEnum(None, 2)
+        for use in uses:
+            remote = use.get("remote") or ""
+            remote_host = remote.lstrip("\\").split("\\", 1)[0]
+            if remote_host.casefold() == host.casefold():
+                self.cancel(use.get("local") or remote, force=True)
+                cancelled += 1
         return cancelled
+
+
+def _split_account(account: str) -> tuple[str, str]:
+    """Return the domain and username expected by ``USE_INFO_2``."""
+
+    if "\\" in account:
+        domain, username = account.split("\\", 1)
+        return domain, username
+    return "", account
 
 
 def _verify_access(path: Path, timeout_s: int) -> tuple[bool, str]:

@@ -1,4 +1,4 @@
-"""Verify WNet resource construction without creating a real network mapping."""
+"""Verify native SMB resource construction without creating a real mapping."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pywintypes
 
-from app.mapper import CONNECT_UPDATE_PROFILE, WindowsNetworkMapper
+from app.mapper import USE_LOTS_OF_FORCE, WindowsNetworkMapper
 from app.models import DriveScope, DriveSpec
 
 
@@ -29,59 +29,91 @@ def drive(
     )
 
 
-def test_connect_passes_password_in_memory_and_no_profile_flag() -> None:
+def test_connect_passes_password_in_memory_to_netuse() -> None:
     mapper = WindowsNetworkMapper()
-    with patch("win32wnet.WNetAddConnection2") as add:
+    with patch("win32net.NetUseAdd") as add:
         mapper.connect(drive(False), "marker-password")
-    resource, password, username, flags = add.call_args.args
-    assert resource["LocalName"] == "Z:"
-    assert resource["RemoteName"] == r"\\192.168.230.245\seguridad"
-    assert password == "marker-password"
-    assert username == r"workgroup\readuser"
-    assert flags == 0
+    server, level, use_info = add.call_args.args
+    assert server is None
+    assert level == 2
+    assert use_info["local"] == "Z:"
+    assert use_info["remote"] == r"\\192.168.230.245\seguridad"
+    assert use_info["password"] == "marker-password"
+    assert use_info["username"] == "readuser"
+    assert use_info["domainname"] == "workgroup"
 
 
-def test_user_persistence_sets_profile_flag() -> None:
+def test_user_mapping_uses_same_smb_backend() -> None:
     mapper = WindowsNetworkMapper()
-    with patch("win32wnet.WNetAddConnection2") as add:
+    with patch("win32net.NetUseAdd") as add:
         mapper.connect(
             drive(True, scope=DriveScope.USER),
             "marker-password",
         )
-    assert add.call_args.args[-1] == CONNECT_UPDATE_PROFILE
+    assert add.call_args.args[1] == 2
 
 
-def test_system_mapping_never_writes_an_interactive_profile() -> None:
+def test_upn_account_is_not_split_as_a_domain_account() -> None:
     mapper = WindowsNetworkMapper()
-    with patch("win32wnet.WNetAddConnection2") as add:
-        mapper.connect(drive(True), "marker-password")
-    assert add.call_args.args[-1] == 0
+    spec = drive(True).model_copy(update={"username": "readuser@example.test"})
+    with patch("win32net.NetUseAdd") as add:
+        mapper.connect(spec, "marker-password")
+    use_info = add.call_args.args[2]
+    assert use_info["username"] == "readuser@example.test"
+    assert use_info["domainname"] == ""
 
 
-def test_cancel_removes_remembered_profile() -> None:
+def test_cancel_forces_netuse_removal() -> None:
     mapper = WindowsNetworkMapper()
-    with patch("win32wnet.WNetCancelConnection2") as cancel:
+    with patch("win32net.NetUseDel") as cancel:
         mapper.cancel("F:", force=True)
-    assert cancel.call_args.args == ("F:", CONNECT_UPDATE_PROFILE, True)
+    assert cancel.call_args.args == (None, "F:", USE_LOTS_OF_FORCE)
 
 
-def test_disconnected_remembered_mapping_is_observed_as_absent() -> None:
+def test_disconnected_mapping_is_observed_as_absent() -> None:
     mapper = WindowsNetworkMapper()
     unavailable = pywintypes.error(
         1201,
-        "WNetGetConnection",
+        "NetUseGetInfo",
         "La conexión no está disponible.",
     )
-    with patch("win32wnet.WNetGetConnection", side_effect=unavailable):
+    with patch("win32net.NetUseGetInfo", side_effect=unavailable):
         assert mapper.remote_for("F:") is None
 
 
-def test_cancel_tolerates_disconnected_remembered_mapping() -> None:
+def test_cancel_tolerates_missing_mapping() -> None:
     mapper = WindowsNetworkMapper()
     unavailable = pywintypes.error(
-        1201,
-        "WNetCancelConnection2",
-        "La conexión no está disponible.",
+        2250,
+        "NetUseDel",
+        "La conexión no existe.",
     )
-    with patch("win32wnet.WNetCancelConnection2", side_effect=unavailable):
+    with patch("win32net.NetUseDel", side_effect=unavailable):
         mapper.cancel("F:", force=True)
+
+
+def test_remote_for_returns_native_smb_target() -> None:
+    mapper = WindowsNetworkMapper()
+    with patch(
+        "win32net.NetUseGetInfo",
+        return_value={"local": "W:", "remote": r"\\nas\share"},
+    ):
+        assert mapper.remote_for("W:") == r"\\nas\share"
+
+
+def test_cancel_host_removes_only_matching_smb_server() -> None:
+    mapper = WindowsNetworkMapper()
+    uses = [
+        {"local": "W:", "remote": r"\\192.168.230.245\one"},
+        {"local": "Z:", "remote": r"\\other\share"},
+        {"local": "", "remote": r"\\192.168.230.245\IPC$"},
+    ]
+    with (
+        patch("win32net.NetUseEnum", return_value=(uses, 3, 0)),
+        patch.object(mapper, "cancel") as cancel,
+    ):
+        assert mapper.cancel_host("192.168.230.245") == 2
+    assert [call.args[0] for call in cancel.call_args_list] == [
+        "W:",
+        r"\\192.168.230.245\IPC$",
+    ]
