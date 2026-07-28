@@ -7,7 +7,7 @@ import pytest
 from app.errors import ErrorDisposition, classify_winerror
 
 
-@pytest.mark.parametrize("code", [53, 55, 64])
+@pytest.mark.parametrize("code", [1, 53, 55, 64, 1203, 1222])
 def test_transient_codes_retry(code: int) -> None:
     assert classify_winerror(code).disposition is ErrorDisposition.TRANSIENT
 

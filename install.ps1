@@ -407,7 +407,7 @@ try {
     if (-not $HadConfiguration) {
         $DefaultConfig = @{
             app = 'DriveMapper'
-            version = '1.1.0'
+            version = '1.1.1'
             settings = @{
                 check_interval_s = 60
                 startup_grace_s = 15

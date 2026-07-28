@@ -29,6 +29,11 @@ class ErrorClassification:
 
 
 _ERRORS = {
+    1: ErrorClassification(
+        1, "ERROR_INVALID_FUNCTION", ErrorDisposition.TRANSIENT,
+        "El proveedor de red de Windows no estaba listo para procesar el mapeo.",
+        "El agente volverá a intentarlo con backoff sin bloquear la cuenta.",
+    ),
     53: ErrorClassification(
         53, "ERROR_BAD_NETPATH", ErrorDisposition.TRANSIENT,
         "La ruta de red no está disponible.",
@@ -65,10 +70,20 @@ _ERRORS = {
         "La letra conserva una conexion persistente recordada pero desconectada.",
         "El agente eliminara el perfil recordado y recreara el mapeo.",
     ),
+    1203: ErrorClassification(
+        1203, "ERROR_NO_NET_OR_BAD_PATH", ErrorDisposition.TRANSIENT,
+        "La ruta SMB o el proveedor de red todavía no están disponibles.",
+        "Verifique TCP/445 y el NAS; el agente reintentará automáticamente.",
+    ),
     1219: ErrorClassification(
         1219, "ERROR_SESSION_CREDENTIAL_CONFLICT", ErrorDisposition.HOST_CONFLICT,
         "Ya existe una conexión al servidor con credenciales distintas.",
         "Cierre las conexiones SMB al mismo host o unifique la cuenta configurada.",
+    ),
+    1222: ErrorClassification(
+        1222, "ERROR_NO_NETWORK", ErrorDisposition.TRANSIENT,
+        "Windows aún no tiene una red disponible.",
+        "El agente esperará y volverá a intentarlo automáticamente.",
     ),
     1326: ErrorClassification(
         1326, "ERROR_LOGON_FAILURE", ErrorDisposition.PERMANENT,

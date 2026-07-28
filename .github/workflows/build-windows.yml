@@ -105,6 +105,15 @@ jobs:
           $Checksum = "DrivePulse-$Version-win64.sha256"
           Compress-Archive -Path '.\dist\DriveMapper\*' -DestinationPath $Archive
           Copy-Item -LiteralPath '.\setup.ps1' -Destination $Installer -Force
+          $InstallerText = [IO.File]::ReadAllText(
+            (Resolve-Path $Installer),
+            [Text.Encoding]::UTF8
+          )
+          [IO.File]::WriteAllText(
+            (Resolve-Path $Installer),
+            $InstallerText,
+            (New-Object Text.UTF8Encoding($true))
+          )
           $Hash = (Get-FileHash -LiteralPath $Archive -Algorithm SHA256).Hash
           "$Hash  $Archive" | Set-Content -LiteralPath $Checksum -Encoding Ascii
           & .\Build-Installer.ps1 -Version $Version

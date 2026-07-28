@@ -76,6 +76,7 @@ def test_build_never_uses_online_pip() -> None:
     assert "pip install -r" not in script
     assert "'DrivePulse-Setup.ps1'" in script
     assert "'Instalar DrivePulse.cmd'" in script
+    assert "Text.UTF8Encoding($true)" in script
 
 
 def test_double_click_wizard_uses_stdin_and_user_scope() -> None:

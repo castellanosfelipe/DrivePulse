@@ -102,3 +102,26 @@ def test_transient_failure_schedules_backoff(tmp_path) -> None:
     assert retry["permanent"] == 0
     assert retry["next_attempt_at"] is not None
 
+
+def test_retry_policy_update_clears_previous_unknown_suppression(tmp_path) -> None:
+    database = StateDatabase(tmp_path / "state.db")
+    database.set_retry("seguridad", "old-policy", 1, None, True)
+    reconciler = FakeReconciler(
+        ReconcileResult(
+            "seguridad",
+            "connected",
+            "Unidad accesible.",
+        )
+    )
+    watchdog = Watchdog(
+        FakeStore(settings()),
+        database,
+        reconciler,
+        tmp_path / "signal",
+        tmp_path / "heartbeat",
+        logging.getLogger("watchdog-policy-update"),
+    )
+
+    assert watchdog.run(once=True) == 0
+    assert reconciler.skip_history[-1] == set()
+    assert "seguridad" not in database.retries()

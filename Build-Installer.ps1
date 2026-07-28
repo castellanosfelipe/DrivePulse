@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = 'v1.1.0',
+    [string]$Version = 'v1.1.1',
     [string]$OutputDirectory
 )
 
@@ -60,6 +60,16 @@ Copy-Item -LiteralPath $ArchivePath -Destination $SourceStage
 Copy-Item -LiteralPath $ChecksumPath -Destination $SourceStage
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'setup.ps1') `
     -Destination $SourceStage
+$StagedSetup = Join-Path $SourceStage 'setup.ps1'
+$SetupContent = [IO.File]::ReadAllText(
+    $StagedSetup,
+    [Text.Encoding]::UTF8
+)
+[IO.File]::WriteAllText(
+    $StagedSetup,
+    $SetupContent,
+    (New-Object Text.UTF8Encoding($true))
+)
 
 $Launcher = @'
 @echo off

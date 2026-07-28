@@ -17,12 +17,21 @@ from app.platform.signals import token
 from app.reconciler import Reconciler
 from app.settings_store import SettingsStore
 
+RETRY_POLICY_VERSION = "2"
+
 
 def fingerprint(drive: DriveSpec) -> str:
     """Hash retry-relevant encrypted configuration without exposing a secret."""
 
     payload = "|".join(
-        [drive.unc, drive.username, drive.secret, drive.letter, str(drive.enabled)]
+        [
+            RETRY_POLICY_VERSION,
+            drive.unc,
+            drive.username,
+            drive.secret,
+            drive.letter,
+            str(drive.enabled),
+        ]
     )
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 

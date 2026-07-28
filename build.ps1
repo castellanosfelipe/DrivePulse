@@ -195,6 +195,15 @@ foreach ($File in @(
         -Destination $PackageRoot `
         -Force
 }
+# Windows PowerShell 5.1 interprets UTF-8 without BOM using the active ANSI
+# codepage. Add a BOM only to the distributed scripts so Spanish UI text is
+# rendered correctly while the repository remains normalized as UTF-8.
+$Utf8Bom = New-Object Text.UTF8Encoding($true)
+Get-ChildItem -LiteralPath $PackageRoot -Filter '*.ps1' -File |
+    ForEach-Object {
+        $Content = [IO.File]::ReadAllText($_.FullName, [Text.Encoding]::UTF8)
+        [IO.File]::WriteAllText($_.FullName, $Content, $Utf8Bom)
+    }
 Copy-Item `
     -LiteralPath (Join-Path $Root 'docs') `
     -Destination $PackageRoot `
