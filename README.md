@@ -96,9 +96,17 @@ drivemap logs --tail 50
   <p><em>El estado que origina el problema: las letras siguen visibles, pero la sesión SMB ya no está disponible para el proceso consumidor.</em></p>
 </div>
 
-DrivePulse usa un asistente gráfico únicamente para instalar y configurar. La operación continua permanece en agentes locales sin dashboard web, lo que reduce la superficie de ataque.
+### Instalación y configuración en una sola pantalla
 
-<!-- TODO: agregar una captura de drivemap doctor y otra de status después del piloto, sin incluir hosts, usuarios o datos sensibles. -->
+<div align="center">
+  <img src="assets/installer-wizard-v1.1.3.png" alt="Asistente gráfico de DrivePulse 1.1.3 preparado para configurar tres unidades SMB" width="900"/>
+  <p><em>El instalador solicita la letra, la ruta compartida, la contraseña y el usuario de cada unidad. La opción para ABBYY crea los mismos mapeos en el contexto de SYSTEM.</em></p>
+</div>
+
+Al completar la instalación, los campos de contraseña se limpian de la
+interfaz. DrivePulse conserva las credenciales cifradas con DPAPI y deja los
+agentes de usuario y `SYSTEM` encargados de recrear las unidades después de un
+reinicio o una interrupción del NAS.
 
 <a id="instalacion-rapida"></a>
 
