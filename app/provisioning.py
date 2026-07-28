@@ -95,7 +95,7 @@ def provision_settings(
                     username=item.username,
                     secret=protected,
                     scope=DriveScope.SYSTEM,
-                    persistent=True,
+                    persistent=False,
                     description="Disponible para ABBYY y servicios de Windows.",
                 )
             )

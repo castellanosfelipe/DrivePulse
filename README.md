@@ -5,7 +5,7 @@
   <!-- TODO: agregar un banner propio de DrivePulse; el repositorio aún no incluye este asset. -->
 
   <p>
-    <a href="https://github.com/castellanosfelipe/DrivePulse/releases/tag/v1.1.1"><img src="https://img.shields.io/badge/version-1.1.1-blue" alt="Versión 1.1.1"/></a>
+    <a href="https://github.com/castellanosfelipe/DrivePulse/releases/tag/v1.1.2"><img src="https://img.shields.io/badge/version-1.1.2-blue" alt="Versión 1.1.2"/></a>
     <img src="https://img.shields.io/badge/status-active-2ea44f" alt="Estado activo"/>
     <img src="https://img.shields.io/badge/license-internal_use-orange" alt="Licencia de uso interno"/>
     <a href="https://github.com/castellanosfelipe/DrivePulse/actions/workflows/build-windows.yml"><img src="https://github.com/castellanosfelipe/DrivePulse/actions/workflows/build-windows.yml/badge.svg" alt="Estado del build de Windows"/></a>
@@ -38,7 +38,7 @@
 
 DrivePulse es un producto de continuidad operativa para equipos Windows que dependen de unidades SMB. Convierte un procedimiento manual y repetitivo —reconectar letras después de cada reinicio o interrupción— en una capacidad automática, observable y preparada para operar sin internet.
 
-La versión `1.1.1` incorpora un instalador gráfico de doble clic, mapeos persistentes visibles en el Explorador y soporte simultáneo para ABBYY. También reintenta rutas SMB que Windows reporta temporalmente con WinError 1, 1203 o 1222 y reactiva automáticamente unidades suspendidas por versiones anteriores.
+La versión `1.1.2` incorpora un instalador gráfico de doble clic, mapeos persistentes visibles en el Explorador y soporte simultáneo para ABBYY. Separa la persistencia del perfil interactivo de la persistencia operativa de `SYSTEM`, evitando WinError 1 en tareas no interactivas, y reactiva automáticamente unidades suspendidas por versiones anteriores.
 
 ### El problema que resuelve
 

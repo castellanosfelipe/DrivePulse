@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
-from app.models import DriveSpec
+from app.models import DriveScope, DriveSpec
 
 CONNECT_UPDATE_PROFILE = 0x00000001
 ERROR_CONNECTION_UNAVAIL = 1201
@@ -71,7 +71,15 @@ class WindowsNetworkMapper:
             "RemoteName": drive.unc,
             "Provider": None,
         }
-        flags = CONNECT_UPDATE_PROFILE if drive.persistent else 0
+        # A LocalSystem scheduled task has no interactive user profile in which
+        # WNet can safely remember a drive. CONNECT_UPDATE_PROFILE returns
+        # ERROR_INVALID_FUNCTION on affected Windows 10 machines. The SYSTEM
+        # watchdog provides persistence by recreating the mapping every boot.
+        flags = (
+            CONNECT_UPDATE_PROFILE
+            if drive.persistent and drive.scope is DriveScope.USER
+            else 0
+        )
         win32wnet.WNetAddConnection2(resource, password, drive.username, flags)
 
     def cancel(self, name: str, *, force: bool = True) -> None:

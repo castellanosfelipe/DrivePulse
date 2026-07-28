@@ -7,10 +7,14 @@ from unittest.mock import patch
 import pywintypes
 
 from app.mapper import CONNECT_UPDATE_PROFILE, WindowsNetworkMapper
-from app.models import DriveSpec
+from app.models import DriveScope, DriveSpec
 
 
-def drive(persistent: bool) -> DriveSpec:
+def drive(
+    persistent: bool,
+    *,
+    scope: DriveScope = DriveScope.SYSTEM,
+) -> DriveSpec:
     return DriveSpec(
         id="seguridad",
         letter="Z:",
@@ -18,6 +22,10 @@ def drive(persistent: bool) -> DriveSpec:
         username=r"workgroup\readuser",
         secret="dpapi:QUJDRA==",
         persistent=persistent,
+        scope=scope,
+        target_user=(
+            r"MACHINE\operator" if scope is DriveScope.USER else None
+        ),
     )
 
 
@@ -36,8 +44,18 @@ def test_connect_passes_password_in_memory_and_no_profile_flag() -> None:
 def test_user_persistence_sets_profile_flag() -> None:
     mapper = WindowsNetworkMapper()
     with patch("win32wnet.WNetAddConnection2") as add:
-        mapper.connect(drive(True), "marker-password")
+        mapper.connect(
+            drive(True, scope=DriveScope.USER),
+            "marker-password",
+        )
     assert add.call_args.args[-1] == CONNECT_UPDATE_PROFILE
+
+
+def test_system_mapping_never_writes_an_interactive_profile() -> None:
+    mapper = WindowsNetworkMapper()
+    with patch("win32wnet.WNetAddConnection2") as add:
+        mapper.connect(drive(True), "marker-password")
+    assert add.call_args.args[-1] == 0
 
 
 def test_cancel_removes_remembered_profile() -> None:

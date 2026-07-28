@@ -45,8 +45,8 @@ def test_wizard_creates_persistent_explorer_and_system_mappings(tmp_path) -> Non
     } == {
         (DriveScope.USER, "W:", True),
         (DriveScope.USER, "Z:", True),
-        (DriveScope.SYSTEM, "W:", True),
-        (DriveScope.SYSTEM, "Z:", True),
+        (DriveScope.SYSTEM, "W:", False),
+        (DriveScope.SYSTEM, "Z:", False),
     }
     assert {
         drive.target_user

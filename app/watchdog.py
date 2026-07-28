@@ -17,7 +17,7 @@ from app.platform.signals import token
 from app.reconciler import Reconciler
 from app.settings_store import SettingsStore
 
-RETRY_POLICY_VERSION = "2"
+RETRY_POLICY_VERSION = "3"
 
 
 def fingerprint(drive: DriveSpec) -> str:
