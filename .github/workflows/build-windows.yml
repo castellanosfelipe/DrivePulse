@@ -30,6 +30,8 @@ jobs:
             '.\dist\DriveMapper\agent\agent.exe',
             '.\dist\DriveMapper\agent\verify_access.exe',
             '.\dist\DriveMapper\drivemap\drivemap.exe',
+            '.\dist\DriveMapper\DrivePulse-Setup.ps1',
+            '.\dist\DriveMapper\Instalar DrivePulse.cmd',
             '.\dist\DriveMapper\install.ps1',
             '.\dist\DriveMapper\uninstall.ps1'
           )
@@ -105,9 +107,15 @@ jobs:
           Copy-Item -LiteralPath '.\setup.ps1' -Destination $Installer -Force
           $Hash = (Get-FileHash -LiteralPath $Archive -Algorithm SHA256).Hash
           "$Hash  $Archive" | Set-Content -LiteralPath $Checksum -Encoding Ascii
+          & .\Build-Installer.ps1 -Version $Version
+          $FriendlyInstaller = "dist\release\DrivePulse-$Version-Setup.exe"
+          if (-not (Test-Path -LiteralPath $FriendlyInstaller -PathType Leaf)) {
+            throw "No se creó el instalador gráfico de doble clic."
+          }
           "archive=$Archive" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "installer=$Installer" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "checksum=$Checksum" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "friendly_installer=$FriendlyInstaller" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
       - name: Smoke test del instalador publicado de un comando
         shell: powershell
@@ -141,6 +149,7 @@ jobs:
             ${{ steps.package.outputs.archive }}
             ${{ steps.package.outputs.installer }}
             ${{ steps.package.outputs.checksum }}
+            ${{ steps.package.outputs.friendly_installer }}
           if-no-files-found: error
 
       - name: Publicar release
@@ -152,20 +161,20 @@ jobs:
           $Notes = @"
           ## Instalacion
 
-          1. Descargue los tres assets en la misma carpeta.
-          2. Copielos a la maquina Windows offline.
-          3. Abra PowerShell como administrador en esa carpeta.
-          4. Ejecute un solo comando:
-             ``powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\${{ steps.package.outputs.installer }}``
-          5. Configure las unidades con ``drivemap add``; la contrasena se solicita de forma oculta.
+          1. Descargue ``DrivePulse-$env:GITHUB_REF_NAME-Setup.exe``.
+          2. Cópielo a la máquina Windows y haga doble clic.
+          3. Ingrese letra, ruta, contraseña y usuario para cada unidad.
+          4. Pulse **Instalar y mapear**.
 
-          El instalador verifica el SHA-256, extrae el ZIP en una carpeta
-          temporal, instala, valida el heartbeat y limpia los temporales.
+          El asistente crea unidades persistentes visibles en el Explorador y,
+          si se deja marcada la opción, también las habilita para ABBYY.
+          Las credenciales se cifran con Windows DPAPI.
           "@
           $Assets = @(
             '${{ steps.package.outputs.archive }}',
             '${{ steps.package.outputs.installer }}',
-            '${{ steps.package.outputs.checksum }}'
+            '${{ steps.package.outputs.checksum }}',
+            '${{ steps.package.outputs.friendly_installer }}'
           )
           $PreviousErrorPreference = $ErrorActionPreference
           $ErrorActionPreference = 'SilentlyContinue'

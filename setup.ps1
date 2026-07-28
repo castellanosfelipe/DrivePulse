@@ -1,11 +1,52 @@
 [CmdletBinding()]
 param(
     [string]$PackagePath,
-    [switch]$NonInteractive
+    [switch]$NonInteractive,
+    [string]$TargetUser,
+    [switch]$Elevated
 )
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version 2.0
+
+function Test-Administrator {
+    $Identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $Principal = New-Object Security.Principal.WindowsPrincipal($Identity)
+    return $Principal.IsInRole(
+        [Security.Principal.WindowsBuiltInRole]::Administrator
+    )
+}
+
+function Quote-ProcessArgument {
+    param([Parameter(Mandatory=$true)][string]$Value)
+    return '"' + $Value.Replace('"', '\"') + '"'
+}
+
+if (-not $TargetUser) {
+    $TargetUser = [Security.Principal.WindowsIdentity]::GetCurrent().Name
+}
+
+if (-not (Test-Administrator)) {
+    $PowerShell = Join-Path $env:SystemRoot (
+        'System32\WindowsPowerShell\v1.0\powershell.exe'
+    )
+    $Arguments = @(
+        '-NoProfile',
+        '-ExecutionPolicy', 'Bypass',
+        '-File', (Quote-ProcessArgument $PSCommandPath),
+        '-TargetUser', (Quote-ProcessArgument $TargetUser),
+        '-Elevated'
+    )
+    if ($PackagePath) {
+        $Arguments += @('-PackagePath', (Quote-ProcessArgument $PackagePath))
+    }
+    if ($NonInteractive) {
+        $Arguments += '-NonInteractive'
+    }
+    $Process = Start-Process -FilePath $PowerShell -Verb RunAs `
+        -ArgumentList ($Arguments -join ' ') -Wait -PassThru
+    exit $Process.ExitCode
+}
 
 function Resolve-ReleasePackage {
     param([string]$RequestedPath)
@@ -64,15 +105,20 @@ try {
     if ($Installers.Count -ne 1) {
         throw "El ZIP no contiene exactamente un install.ps1."
     }
-    $Arguments = @(
-        '-NoProfile',
-        '-ExecutionPolicy',
-        'Bypass',
-        '-File',
-        $Installers[0].FullName
-    )
+    $Script = $Installers[0].FullName
+    $Arguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File')
+    if (-not $NonInteractive) {
+        $Wizard = Join-Path $Installers[0].DirectoryName 'DrivePulse-Setup.ps1'
+        if (-not (Test-Path -LiteralPath $Wizard -PathType Leaf)) {
+            throw "El ZIP no contiene el asistente gráfico de DrivePulse."
+        }
+        $Script = $Wizard
+    }
+    $Arguments += $Script
     if ($NonInteractive) {
         $Arguments += '-NonInteractive'
+    } else {
+        $Arguments += @('-TargetUser', $TargetUser, '-Elevated')
     }
     & powershell.exe @Arguments
     if ($LASTEXITCODE -ne 0) {

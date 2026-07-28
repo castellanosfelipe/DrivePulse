@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
+import pywintypes
+
 from app.mapper import CONNECT_UPDATE_PROFILE, WindowsNetworkMapper
 from app.models import DriveSpec
 
@@ -43,3 +45,25 @@ def test_cancel_removes_remembered_profile() -> None:
     with patch("win32wnet.WNetCancelConnection2") as cancel:
         mapper.cancel("F:", force=True)
     assert cancel.call_args.args == ("F:", CONNECT_UPDATE_PROFILE, True)
+
+
+def test_disconnected_remembered_mapping_is_observed_as_absent() -> None:
+    mapper = WindowsNetworkMapper()
+    unavailable = pywintypes.error(
+        1201,
+        "WNetGetConnection",
+        "La conexión no está disponible.",
+    )
+    with patch("win32wnet.WNetGetConnection", side_effect=unavailable):
+        assert mapper.remote_for("F:") is None
+
+
+def test_cancel_tolerates_disconnected_remembered_mapping() -> None:
+    mapper = WindowsNetworkMapper()
+    unavailable = pywintypes.error(
+        1201,
+        "WNetCancelConnection2",
+        "La conexión no está disponible.",
+    )
+    with patch("win32wnet.WNetCancelConnection2", side_effect=unavailable):
+        mapper.cancel("F:", force=True)

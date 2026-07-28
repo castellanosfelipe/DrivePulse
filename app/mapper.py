@@ -12,6 +12,7 @@ from typing import Protocol
 from app.models import DriveSpec
 
 CONNECT_UPDATE_PROFILE = 0x00000001
+ERROR_CONNECTION_UNAVAIL = 1201
 ERROR_NOT_CONNECTED = 2250
 
 
@@ -45,7 +46,10 @@ class WindowsNetworkMapper:
         try:
             return str(win32wnet.WNetGetConnection(letter))
         except pywintypes.error as error:
-            if getattr(error, "winerror", error.args[0]) == ERROR_NOT_CONNECTED:
+            if getattr(error, "winerror", error.args[0]) in {
+                ERROR_CONNECTION_UNAVAIL,
+                ERROR_NOT_CONNECTED,
+            }:
                 return None
             raise
 
@@ -81,7 +85,10 @@ class WindowsNetworkMapper:
                 force,
             )
         except pywintypes.error as error:
-            if getattr(error, "winerror", error.args[0]) != ERROR_NOT_CONNECTED:
+            if getattr(error, "winerror", error.args[0]) not in {
+                ERROR_CONNECTION_UNAVAIL,
+                ERROR_NOT_CONNECTED,
+            }:
                 raise
 
     def cancel_host(self, host: str) -> int:

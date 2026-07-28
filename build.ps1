@@ -182,7 +182,14 @@ Copy-Item `
     -LiteralPath (Join-Path $DistRoot 'verify_access\verify_access.exe') `
     -Destination (Join-Path $PackageRoot 'agent\verify_access.exe') `
     -Force
-foreach ($File in @('install.ps1', 'uninstall.ps1', 'README.md', 'LICENSE')) {
+foreach ($File in @(
+    'DrivePulse-Setup.ps1',
+    'Instalar DrivePulse.cmd',
+    'install.ps1',
+    'uninstall.ps1',
+    'README.md',
+    'LICENSE'
+)) {
     Copy-Item `
         -LiteralPath (Join-Path $Root $File) `
         -Destination $PackageRoot `

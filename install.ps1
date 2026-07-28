@@ -368,6 +368,8 @@ try {
         'agent',
         'drivemap',
         'docs',
+        'DrivePulse-Setup.ps1',
+        'Instalar DrivePulse.cmd',
         'install.ps1',
         'uninstall.ps1',
         'README.md',
@@ -405,7 +407,7 @@ try {
     if (-not $HadConfiguration) {
         $DefaultConfig = @{
             app = 'DriveMapper'
-            version = '1.0.6'
+            version = '1.1.0'
             settings = @{
                 check_interval_s = 60
                 startup_grace_s = 15

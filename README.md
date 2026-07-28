@@ -5,7 +5,7 @@
   <!-- TODO: agregar un banner propio de DrivePulse; el repositorio aún no incluye este asset. -->
 
   <p>
-    <a href="https://github.com/castellanosfelipe/DrivePulse/releases/tag/v1.0.6"><img src="https://img.shields.io/badge/version-1.0.6-blue" alt="Versión 1.0.6"/></a>
+    <a href="https://github.com/castellanosfelipe/DrivePulse/releases/tag/v1.1.0"><img src="https://img.shields.io/badge/version-1.1.0-blue" alt="Versión 1.1.0"/></a>
     <img src="https://img.shields.io/badge/status-active-2ea44f" alt="Estado activo"/>
     <img src="https://img.shields.io/badge/license-internal_use-orange" alt="Licencia de uso interno"/>
     <a href="https://github.com/castellanosfelipe/DrivePulse/actions/workflows/build-windows.yml"><img src="https://github.com/castellanosfelipe/DrivePulse/actions/workflows/build-windows.yml/badge.svg" alt="Estado del build de Windows"/></a>
@@ -38,7 +38,7 @@
 
 DrivePulse es un producto de continuidad operativa para equipos Windows que dependen de unidades SMB. Convierte un procedimiento manual y repetitivo —reconectar letras después de cada reinicio o interrupción— en una capacidad automática, observable y preparada para operar sin internet.
 
-La versión `1.0.6` incorpora recuperación de conexiones persistentes recordadas (WinError 1201), reparación de ACL heredadas, instalación transaccional y validación de heartbeat. La aceptación final de tiempos de recuperación continúa pendiente en los tres equipos Windows y el NAS Synology reales.
+La versión `1.1.0` incorpora un instalador gráfico de doble clic, mapeos persistentes visibles en el Explorador y soporte simultáneo para ABBYY. También corrige la recuperación de conexiones recordadas que Windows reporta con WinError 1201.
 
 ### El problema que resuelve
 
@@ -96,7 +96,7 @@ drivemap logs --tail 50
   <p><em>El estado que origina el problema: las letras siguen visibles, pero la sesión SMB ya no está disponible para el proceso consumidor.</em></p>
 </div>
 
-DrivePulse es deliberadamente un producto CLI-first y no incluye dashboard web en v1. Esto reduce la superficie de ataque de un proceso que opera como `SYSTEM`.
+DrivePulse usa un asistente gráfico únicamente para instalar y configurar. La operación continua permanece en agentes locales sin dashboard web, lo que reduce la superficie de ataque.
 
 <!-- TODO: agregar una captura de drivemap doctor y otra de status después del piloto, sin incluir hosts, usuarios o datos sensibles. -->
 
@@ -115,18 +115,16 @@ DrivePulse es deliberadamente un producto CLI-first y no incluye dashboard web e
 
 ### Pasos
 
-1. Desde un equipo con internet, descargue los tres assets de la [última release de DrivePulse](https://github.com/castellanosfelipe/DrivePulse/releases/latest): ZIP, instalador `.ps1` y `.sha256`.
-2. Copie los tres archivos a la misma carpeta de la máquina Windows offline.
-3. Abra PowerShell como administrador en esa carpeta.
-4. Ejecute un solo comando, sustituyendo `<versión>` por el nombre descargado:
+1. Descargue `DrivePulse-<versión>-Setup.exe` desde la [última release de DrivePulse](https://github.com/castellanosfelipe/DrivePulse/releases/latest).
+2. Cópielo a la máquina Windows y haga doble clic.
+3. Autorice el control de cuentas de usuario.
+4. Para cada unidad ingrese la información con la estructura `net use`: letra, ruta UNC, contraseña, usuario y persistencia.
+5. Pulse **Instalar y mapear**.
 
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\DrivePulse-<versión>-install.ps1
-```
-
-El instalador verifica el SHA-256, extrae el paquete temporalmente, actualiza
-sin sobrescribir procesos activos y valida el heartbeat. Si todo está correcto,
-verá: `DriveMapper instalado correctamente.`
+El asistente instala DrivePulse, cifra las contraseñas con DPAPI, crea las tareas
+de reconexión y abre “Este equipo”. Las unidades se crean en la sesión del usuario
+para que sean visibles en el Explorador y, de forma predeterminada, también en el
+contexto de ABBYY y servicios.
 
 Si ya extrajo el ZIP, el comando equivalente es:
 
@@ -242,7 +240,8 @@ Las decisiones y alternativas descartadas están documentadas en [`docs/DECISION
 - [x] Protección DPAPI, redacción de logs y ACL restrictivas.
 - [x] CLI de administración y diagnóstico `doctor`.
 - [x] Build e instalación offline con pruebas automatizadas.
-- [x] Release `v1.0.6` con ZIP, instalador y checksum.
+- [x] Instalador gráfico de un solo archivo y doble clic.
+- [x] Mapeos persistentes visibles en el Explorador y disponibles para ABBYY.
 
 ### 🔄 En progreso
 

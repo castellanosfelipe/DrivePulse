@@ -74,6 +74,19 @@ def test_build_never_uses_online_pip() -> None:
     assert "--self-test" in script
     assert "Invoke-WebRequest" not in script
     assert "pip install -r" not in script
+    assert "'DrivePulse-Setup.ps1'" in script
+    assert "'Instalar DrivePulse.cmd'" in script
+
+
+def test_double_click_wizard_uses_stdin_and_user_scope() -> None:
+    launcher = text("Instalar DrivePulse.cmd")
+    wizard = text("DrivePulse-Setup.ps1")
+    assert "DrivePulse-Setup.ps1" in launcher
+    assert "UseSystemPasswordChar = $true" in wizard
+    assert "RedirectStandardInput = $true" in wizard
+    assert "$StartInfo.Arguments = 'provision'" in wizard
+    assert "target_user = $TargetUser" in wizard
+    assert "/persistent:yes" in wizard
 
 
 def test_uninstall_preserves_data_unless_purge_and_mappings_are_opt_in() -> None:

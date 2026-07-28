@@ -17,7 +17,7 @@ from pydantic import (
 )
 
 APP_NAME = "DriveMapper"
-APP_VERSION = "1.0.6"
+APP_VERSION = "1.1.0"
 ID_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 UNC_PATTERN = re.compile(
     r'^\\\\(?P<host>[^\\/:*?"<>|]+)\\(?P<share>[^\\/:*?"<>|]+)$'

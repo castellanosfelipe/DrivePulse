@@ -11,6 +11,8 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from pydantic import ValidationError
+
 from app import __version__
 from app.config import (
     AGENT_HEARTBEAT_PATH,
@@ -32,10 +34,12 @@ from app.errors import ConfigurationError, ConnectivityError, PrivilegeError
 from app.mapper import WindowsNetworkMapper
 from app.models import AppSettings, DriveScope, DriveSpec
 from app.platform.detect import is_admin
+from app.platform.identity import account_sid
 from app.platform.scheduled_task import start_task
 from app.platform.secretstore import SecretStore, create_secret_store
 from app.platform.signals import notify
 from app.platform.volumes import find_free_letter, inspect_letter
+from app.provisioning import ProvisionRequest, provision_settings
 from app.settings_store import SettingsStore
 from app.user_views import sync_user_views
 
@@ -396,6 +400,42 @@ def command_sync_user_tasks(
     return EXIT_OK
 
 
+def command_provision(_args: argparse.Namespace, runtime: Runtime) -> int:
+    """Apply one wizard request read from stdin so secrets never enter argv."""
+
+    require_admin()
+    try:
+        raw = json.loads(sys.stdin.read())
+        request = ProvisionRequest.model_validate(raw)
+    except (json.JSONDecodeError, ValidationError) as error:
+        raise ConfigurationError(
+            f"Los datos del asistente no son válidos: {error}"
+        ) from error
+
+    for item in request.drives:
+        if inspect_letter(item.letter).is_physical:
+            raise ConfigurationError(
+                f"{item.letter} está ocupada por un volumen físico."
+            )
+
+    settings = provision_settings(runtime.store.load(), request, runtime.secrets)
+    save_and_notify(runtime, settings)
+    task_name = f"DriveMapper-User-{account_sid(request.target_user)}"
+    start_task(task_name)
+    print(
+        json.dumps(
+            {
+                "configured": len(request.drives),
+                "target_user": request.target_user,
+                "include_system": request.include_system,
+                "task": task_name,
+            },
+            ensure_ascii=False,
+        )
+    )
+    return EXIT_OK
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="drivemap",
@@ -489,6 +529,11 @@ def build_parser() -> argparse.ArgumentParser:
         help=argparse.SUPPRESS,
     )
     verify_acl.set_defaults(handler=command_verify_acl)
+    provision = subparsers.add_parser(
+        "provision",
+        help=argparse.SUPPRESS,
+    )
+    provision.set_defaults(handler=command_provision)
     return parser
 
 
